@@ -10,7 +10,8 @@ import { LadiesRailSection } from './components/LadiesRailSection';
 import { Look, Product } from './types';
 import { getStoredLooks, getStoredProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
-import { getStoredSettings, StoreSettings, cleanCurrencySymbol } from './services/storeSettings';
+import { getStoredSettings, saveStoredSettings, StoreSettings, cleanCurrencySymbol } from './services/storeSettings';
+import { fetchStoreSettingsFromFirestore } from './services/firebase';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'runway' | 'admin'>(() => {
@@ -93,6 +94,19 @@ export default function App() {
       window.history.pushState(null, '', '#');
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    fetchStoreSettingsFromFirestore().then((cloudSettings) => {
+      if (!active || !cloudSettings) return;
+      const merged = { ...getStoredSettings(), ...cloudSettings };
+      saveStoredSettings(merged);
+      setSettings(merged);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const currentCurrency = cleanCurrencySymbol(settings.currencySymbol);
   let sharedOrder: any = null;
