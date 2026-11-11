@@ -60,7 +60,7 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
     order.notes ? `📍 ${order.notes}` : '',
     order.shareUrl ? `🔗 View order and product photos: ${order.shareUrl}` : '',
     '',
-    '(order slip image attached)',
+    '(Open the order link above to view item photos.)',
   ]
     .filter((l, i, arr) => l !== '' || (i > 0 && arr[i - 1] !== ''))
     .join('\n');
