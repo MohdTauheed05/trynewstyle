@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import {
   getFirestore,
   Firestore,
@@ -129,6 +130,7 @@ export async function syncCatalogToFirestore(
         shopName: settings.shopName,
         shopTagline: settings.shopTagline,
         whatsappNumber: settings.whatsappNumber,
+        currencySymbol: settings.currencySymbol,
         updatedAt: serverTimestamp(),
       });
     }
@@ -177,6 +179,51 @@ export async function fetchCatalogFromFirestore(): Promise<{
   }
 }
 
+
+export async function signInStoreAdmin(email: string, password: string): Promise<{ success: boolean; message: string }> {
+  const { app } = getFirebaseInstance();
+  if (!app) return { success: false, message: 'Firebase is not configured.' };
+  if (!email) return { success: false, message: 'Set VITE_FIREBASE_ADMIN_EMAIL to the store admin Firebase Auth email.' };
+  try {
+    await signInWithEmailAndPassword(getAuth(app), email, password);
+    return { success: true, message: 'Signed in to shared store settings.' };
+  } catch (error: any) {
+    return { success: false, message: error?.message || 'Firebase admin sign-in failed.' };
+  }
+}
+
+export async function signOutStoreAdmin(): Promise<void> {
+  const { app } = getFirebaseInstance();
+  if (!app) return;
+  try {
+    await signOut(getAuth(app));
+  } catch (error) {
+    console.error('Firebase admin sign-out failed:', error);
+  }
+}
+
+export async function saveStoreSettingsToFirestore(
+  settings: StoreSettings
+): Promise<{ success: boolean; message: string }> {
+  const { app, db } = getFirebaseInstance();
+  if (!app || !db) return { success: false, message: 'Firebase is not configured.' };
+  if (!getAuth(app).currentUser) {
+    return { success: false, message: 'Sign in to Firebase as the store admin before saving shared settings.' };
+  }
+  try {
+    await setDoc(doc(db, 'settings', 'general'), {
+      shopName: settings.shopName,
+      shopTagline: settings.shopTagline,
+      whatsappNumber: settings.whatsappNumber.replace(/[^0-9]/g, ''),
+      currencySymbol: settings.currencySymbol,
+      updatedAt: serverTimestamp(),
+    });
+    return { success: true, message: 'Shared store settings saved. All devices will use the new WhatsApp number.' };
+  } catch (error: any) {
+    console.error('Failed to save shared store settings:', error);
+    return { success: false, message: error?.message || 'Could not save shared settings.' };
+  }
+}
 
 export async function fetchStoreSettingsFromFirestore(): Promise<Partial<StoreSettings> | null> {
   const { db } = getFirebaseInstance();
