@@ -184,6 +184,7 @@ export async function saveOrderToFirestore(orderData: {
   phone?: string;
   customerName?: string;
   notes?: string;
+  orderUrl?: string;
 }): Promise<void> {
   const { db } = getFirebaseInstance();
   if (!db) return;
