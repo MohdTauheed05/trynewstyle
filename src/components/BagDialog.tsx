@@ -93,8 +93,6 @@ export const BagDialog: React.FC<BagDialogProps> = ({
       orderId,
       date: new Date().toISOString(),
       shopName,
-      customerName: customerName || undefined,
-      notes: deliveryNotes || undefined,
       items: shareItems,
       total: subtotal,
       currencySymbol,
