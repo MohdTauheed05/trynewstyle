@@ -91,12 +91,30 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
   const handleOrderWhatsApp = async () => {
     const cleanPhone = (whatsappNumber || '').replace(/[^0-9]/g, '');
     if (!cleanPhone) {
-      setNote('The shop WhatsApp number is not set. Please set it in Admin settings.');
+      setNote('The shop WhatsApp number is not set. Please save it in Admin settings.');
       return;
     }
-    const chatUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(caption)}`;
 
-    // Start copying the image first, then open the chat right away (same tap)
+    const shareText = `${caption}\n📱 Shop WhatsApp: +${cleanPhone}`;
+    if (png && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+      const slipFile = new File([png], fileName, { type: 'image/png' });
+      try {
+        if (navigator.canShare({ files: [slipFile] })) {
+          await navigator.share({
+            files: [slipFile],
+            title: `Order ${order.orderId} - ${order.shopName}`,
+            text: shareText,
+          });
+          setNote('Choose WhatsApp in the share sheet, select the shop owner, and send. The slip photo and order links are included together.');
+          return;
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        // Fall back to opening the owner's chat if file sharing is unsupported by the target.
+      }
+    }
+
+    const chatUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(caption)}`;
     let clipboardJob: Promise<boolean> = Promise.resolve(false);
     try {
       const CI = (window as any).ClipboardItem;
@@ -115,11 +133,11 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
 
     const copied = await clipboardJob;
     if (copied) {
-      setNote('Order sent to the shop chat. Slip image copied: paste it in the chat (long-press / Ctrl+V) and tap Send.');
+      setNote('Owner chat opened with order text and product links. Paste the copied slip photo in the chat, then send.');
     } else if (downloadPng()) {
-      setNote('Order sent to the shop chat. Slip image saved: tap the attach (+) button in the chat and choose it.');
+      setNote('Owner chat opened with order text and product links. Attach the saved slip photo in the chat, then send.');
     } else {
-      setNote('Order opened in the shop chat. Please also send a screenshot of this slip.');
+      setNote('Owner chat opened with order text and product links. Save or screenshot the slip photo and attach it in the chat.');
     }
   };
 
@@ -277,7 +295,7 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86.173.086.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.145.39-.086s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824zm-3.392-12.416c-5.523 0-10 4.477-10 10 0 1.765.459 3.424 1.261 4.869l-1.261 4.606 4.71-1.236c1.396.762 2.996 1.192 4.69 1.192 5.524 0 10-4.477 10-10s-4.476-10-10-10z" />
             </svg>
-            <span>{!png && !pngFailed ? 'Preparing slip…' : 'Order with WhatsApp'}</span>
+            <span>{!png && !pngFailed ? 'Preparing slip…' : 'Share order and slip'}</span>
           </button>
           <div className="flex gap-2.5">
             <button
