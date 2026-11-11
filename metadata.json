@@ -1,0 +1,6 @@
+{
+  "name": "Try the Look — Runway & Fitting Studio",
+  "description": "Six looks, styled head to toe. Explore the 3D runway, click clothes to see fit on model, with full admin CRUD to upload models and garments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

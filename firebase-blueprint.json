@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A fashion garment or footwear item available on the runway",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique product identifier" },
+        "name": { "type": "string", "description": "Display name of the garment" },
+        "vendor": { "type": "string", "description": "Brand vendor name" },
+        "price": { "type": "number", "description": "Price in USD" },
+        "image": { "type": "string", "description": "Image URL or data URI" },
+        "category": { "type": "string", "description": "Garment category e.g. top, shoes, hoodie" },
+        "sizes": { "type": "array", "description": "Available size labels" },
+        "fitDescription": { "type": "string", "description": "Styling and fit description" },
+        "defaultPinX": { "type": "number", "description": "Model fit pin horizontal coordinate percentage" },
+        "defaultPinY": { "type": "number", "description": "Model fit pin vertical coordinate percentage" }
+      },
+      "required": ["id", "name", "price", "image"]
+    },
+    "Look": {
+      "title": "Look",
+      "description": "A full-body model runway look with pins and pieces",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique look ID" },
+        "name": { "type": "string", "description": "Look title e.g. The City Edit" },
+        "description": { "type": "string", "description": "Look styling description" },
+        "src640": { "type": "string", "description": "Full-body model image URL" },
+        "productIds": { "type": "array", "description": "Array of product IDs in this look" },
+        "pins": { "type": "array", "description": "Numbered pins with coordinates" }
+      },
+      "required": ["id", "name", "src640", "productIds"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A styling bag order placed via WhatsApp or website",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "description": "Unique order code" },
+        "items": { "type": "array", "description": "List of ordered items with sizes and quantities" },
+        "total": { "type": "number", "description": "Total order amount" },
+        "channel": { "type": "string", "description": "whatsapp or web" }
+      },
+      "required": ["orderId", "items", "total"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Garments and shoes available in the shop"
+    },
+    "/looks/{lookId}": {
+      "schema": "Look",
+      "description": "Runway models and styled looks"
+    },
+    "/settings/{settingId}": {
+      "schema": "object",
+      "description": "Store settings, shop name, and contact details"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Submitted customer orders"
+    }
+  }
+}
