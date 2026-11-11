@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { RunwaySection } from './components/RunwaySection';
 import { BagDialog } from './components/BagDialog';
+import { OrderPage } from './components/OrderPage';
 import { AdminPanel } from './components/AdminPanel';
 import { OffcutRailSection } from './components/OffcutRailSection';
 import { LadiesDepthLookbook } from './components/LadiesDepthLookbook';
@@ -9,7 +10,8 @@ import { LadiesRailSection } from './components/LadiesRailSection';
 import { Look, Product } from './types';
 import { getStoredLooks, getStoredProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
-import { getStoredSettings, StoreSettings, cleanCurrencySymbol } from './services/storeSettings';
+import { getStoredSettings, saveStoredSettings, StoreSettings, cleanCurrencySymbol } from './services/storeSettings';
+import { fetchStoreSettingsFromFirestore } from './services/firebase';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'runway' | 'admin'>(() => {
@@ -93,7 +95,32 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    let active = true;
+    fetchStoreSettingsFromFirestore().then((cloudSettings) => {
+      if (!active || !cloudSettings) return;
+      const merged = { ...getStoredSettings(), ...cloudSettings };
+      saveStoredSettings(merged);
+      setSettings(merged);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const currentCurrency = cleanCurrencySymbol(settings.currencySymbol);
+  let sharedOrder: any = null;
+  if (typeof window !== 'undefined' && window.location.hash.startsWith('#order=')) {
+    try {
+      sharedOrder = JSON.parse(decodeURIComponent(window.location.hash.slice('#order='.length)));
+    } catch {
+      sharedOrder = null;
+    }
+  }
+
+  if (sharedOrder && Array.isArray(sharedOrder.items)) {
+    return <OrderPage order={sharedOrder} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#151413]">

@@ -80,21 +80,43 @@ export const BagDialog: React.FC<BagDialogProps> = ({
 
     const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
     const snapshot = items.map((i) => ({ ...i }));
+    const shareItems = snapshot.map(({ id, name, size, quantity, price, image, url }) => ({
+      id: String(id),
+      name,
+      size,
+      quantity,
+      price,
+      image: (image.startsWith('https://') || image.startsWith('http://')) ? image : '',
+      url,
+    }));
+    const shareData = {
+      orderId,
+      date: new Date().toISOString(),
+      shopName,
+      items: shareItems,
+      total: subtotal,
+      currencySymbol,
+    };
+    const orderUrl = `${window.location.origin}${window.location.pathname}#order=${encodeURIComponent(JSON.stringify(shareData))}`;
 
-    // Log order to Firestore (no-op when Firebase isn't configured)
+    // Log a product snapshot, including photo and product page URL, to Firestore.
     saveOrderToFirestore({
       orderId,
       items: snapshot.map((i) => ({
+        id: String(i.id),
         name: i.name,
         size: i.size,
         quantity: i.quantity,
         price: i.price,
+        image: (i.image.startsWith('https://') || i.image.startsWith('http://')) ? i.image : '',
+        url: i.url,
       })),
       total: subtotal,
       channel: 'whatsapp',
       phone: (whatsappNumber || '').replace(/[^0-9]/g, ''),
       customerName: customerName || undefined,
       notes: deliveryNotes || undefined,
+      orderUrl,
     });
 
     setSlip({
@@ -109,6 +131,7 @@ export const BagDialog: React.FC<BagDialogProps> = ({
       shopName,
       customerName: customerName || undefined,
       notes: deliveryNotes || undefined,
+      shareUrl: orderUrl,
       items: snapshot,
       total: subtotal,
       currencyText: (n: number) => formatCurrency(n, currencySymbol),

@@ -52,13 +52,15 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
   const caption = [
     `🧾 *Order ${order.orderId}* - ${order.shopName}`,
     order.customerName ? `👤 ${order.customerName}` : '',
-    ...order.items.map(
-      (it) => `• ${it.quantity}x ${it.name} (${it.size}) - ${order.currencyText(it.price * it.quantity)}`
-    ),
+    ...order.items.map((it) => {
+      const details = `• ${it.quantity}x ${it.name} (${it.size}) - ${order.currencyText(it.price * it.quantity)}`;
+      return it.url ? `${details}\n  ${it.url}` : details;
+    }),
     `💰 *Total: ${order.currencyText(order.total)}*`,
     order.notes ? `📍 ${order.notes}` : '',
+    order.shareUrl ? `🔗 View order and product photos: ${order.shareUrl}` : '',
     '',
-    '(order slip image attached)',
+    '(Open the order link above to view item photos.)',
   ]
     .filter((l, i, arr) => l !== '' || (i > 0 && arr[i - 1] !== ''))
     .join('\n');

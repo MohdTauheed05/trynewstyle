@@ -7,6 +7,7 @@ import {
   getDocs,
   setDoc,
   getDocFromServer,
+  getDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { getStoredSettings, StoreSettings } from './storeSettings';
@@ -176,6 +177,26 @@ export async function fetchCatalogFromFirestore(): Promise<{
   }
 }
 
+
+export async function fetchStoreSettingsFromFirestore(): Promise<Partial<StoreSettings> | null> {
+  const { db } = getFirebaseInstance();
+  if (!db) return null;
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'general'));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return {
+      ...(typeof data.shopName === 'string' ? { shopName: data.shopName } : {}),
+      ...(typeof data.shopTagline === 'string' ? { shopTagline: data.shopTagline } : {}),
+      ...(typeof data.whatsappNumber === 'string' ? { whatsappNumber: data.whatsappNumber } : {}),
+      ...(typeof data.currencySymbol === 'string' ? { currencySymbol: data.currencySymbol } : {}),
+    };
+  } catch (error) {
+    console.error('Error reading store settings from Firestore:', error);
+    return null;
+  }
+}
+
 export async function saveOrderToFirestore(orderData: {
   orderId: string;
   items: any[];
@@ -184,6 +205,7 @@ export async function saveOrderToFirestore(orderData: {
   phone?: string;
   customerName?: string;
   notes?: string;
+  orderUrl?: string;
 }): Promise<void> {
   const { db } = getFirebaseInstance();
   if (!db) return;

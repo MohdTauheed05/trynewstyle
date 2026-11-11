@@ -6,11 +6,16 @@
 3. **Project settings (gear) -> General -> Your apps -> `</>` Web** -> register app -> copy the `firebaseConfig` values.
 4. **Firestore -> Rules** -> paste the contents of `firestore.rules` -> **Publish**.
    (or: `npm i -g firebase-tools && firebase login && firebase deploy --only firestore:rules`)
-5. Orders placed through WhatsApp are saved in the `orders` collection.
+5. Orders placed through WhatsApp are saved in the `orders` collection with product image URLs and product links.
+   The WhatsApp message also includes a shareable order page with item photos and details.
 
 ## 2. Environment variables
 Copy `.env.example` to `.env.local` for local dev, and add the SAME 6 `VITE_FIREBASE_*` values in
 **Vercel -> Project -> Settings -> Environment Variables** (Production + Preview).
+
+Set `VITE_WHATSAPP_NUMBER` to the shop owner's WhatsApp number in international format using digits only
+(no `+`, spaces, or punctuation), for example `971501234567`. Add it to Vercel Production and Preview,
+then redeploy. This deployment setting is shared by phones and computers; the demo number is no longer used.
 
 ## 3. Vercel
 Option A (GitHub): push this folder to a GitHub repo -> vercel.com/new -> import -> Framework "Vite" (auto) -> Deploy.
