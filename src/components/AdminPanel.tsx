@@ -1954,7 +1954,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     type="text"
                     value={settingsForm.whatsappNumber}
                     onChange={(e) => setSettingsForm({ ...settingsForm, whatsappNumber: e.target.value })}
-                    placeholder="e.g. 15551234567 (with country code, digits only)"
+                    placeholder="e.g. +971545086557 (with country code, digits only)"
                     className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none bg-neutral-50 focus:bg-white"
                   />
                   <p className="text-[11px] text-neutral-400 mt-1">
