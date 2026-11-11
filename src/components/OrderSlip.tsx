@@ -49,7 +49,19 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
   }, []);
 
   const fileName = `order-slip-${order.orderId}.png`;
-  const caption = `🧾 Order ${order.orderId} - ${order.shopName}\nTotal: ${order.currencyText(order.total)}\n(order slip image attached)`;
+  const caption = [
+    `🧾 *Order ${order.orderId}* - ${order.shopName}`,
+    order.customerName ? `👤 ${order.customerName}` : '',
+    ...order.items.map(
+      (it) => `• ${it.quantity}x ${it.name} (${it.size}) - ${order.currencyText(it.price * it.quantity)}`
+    ),
+    `💰 *Total: ${order.currencyText(order.total)}*`,
+    order.notes ? `📍 ${order.notes}` : '',
+    '',
+    '(order slip image attached)',
+  ]
+    .filter((l, i, arr) => l !== '' || (i > 0 && arr[i - 1] !== ''))
+    .join('\n');
 
   const downloadPng = () => {
     if (!png) return false;
@@ -69,53 +81,44 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
     else setNote('Slip image is not ready. Please take a screenshot instead.');
   };
 
-  /** Sends the slip IMAGE to WhatsApp (not a text order). */
+  /**
+   * Opens the SHOP OWNER's WhatsApp chat directly (number from Admin settings).
+   * A website cannot attach a picture to a chosen chat by itself, so the slip
+   * image is copied to the clipboard (or saved) for the customer to paste/attach.
+   */
   const handleOrderWhatsApp = async () => {
     const cleanPhone = (whatsappNumber || '').replace(/[^0-9]/g, '');
-    const chatUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(caption)}`;
-
-    if (!png) {
-      // Image could not be created: fall back to opening the chat with a short text
-      window.open(chatUrl, '_blank', 'noopener,noreferrer');
-      setNote('Could not create the slip image - please send a screenshot of the slip in the chat.');
+    if (!cleanPhone) {
+      setNote('The shop WhatsApp number is not set. Please set it in Admin settings.');
       return;
     }
+    const chatUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(caption)}`;
 
-    const file = new File([png], fileName, { type: 'image/png' });
-    const nav = navigator as Navigator & { canShare?: (d: any) => boolean };
-
-    // 1) Phones / supported browsers: native share sheet -> choose WhatsApp -> image attached
-    if (nav.canShare && nav.canShare({ files: [file] }) && typeof nav.share === 'function') {
-      try {
-        await nav.share({ files: [file], text: caption, title: `Order ${order.orderId}` });
-        setNote('Choose WhatsApp and our shop chat to send the slip.');
-        return;
-      } catch (e: any) {
-        if (e?.name === 'AbortError') return; // customer closed the share sheet
-        // otherwise continue with the fallback below
-      }
-    }
-
-    // 2) Desktop: open the shop chat and put the slip image on the clipboard to paste
-    const win = window.open(chatUrl, '_blank', 'noopener,noreferrer');
-    let copied = false;
+    // Start copying the image first, then open the chat right away (same tap)
+    let clipboardJob: Promise<boolean> = Promise.resolve(false);
     try {
       const CI = (window as any).ClipboardItem;
-      if (CI && navigator.clipboard?.write) {
-        await navigator.clipboard.write([new CI({ 'image/png': png })]);
-        copied = true;
+      if (png && CI && navigator.clipboard?.write) {
+        clipboardJob = navigator.clipboard
+          .write([new CI({ 'image/png': png })])
+          .then(() => true)
+          .catch(() => false);
       }
     } catch {
-      copied = false;
+      clipboardJob = Promise.resolve(false);
     }
 
+    const win = window.open(chatUrl, '_blank', 'noopener,noreferrer');
+    if (!win) window.location.href = chatUrl;
+
+    const copied = await clipboardJob;
     if (copied) {
-      setNote('Slip image copied. In the WhatsApp chat press Ctrl+V (or Paste) and Send.');
+      setNote('Order sent to the shop chat. Slip image copied: paste it in the chat (long-press / Ctrl+V) and tap Send.');
+    } else if (downloadPng()) {
+      setNote('Order sent to the shop chat. Slip image saved: tap the attach (+) button in the chat and choose it.');
     } else {
-      downloadPng();
-      setNote('Slip image saved. In the WhatsApp chat tap the attach (+) button and choose the saved image.');
+      setNote('Order opened in the shop chat. Please also send a screenshot of this slip.');
     }
-    if (!win) setNote((n) => n + ' (Allow pop-ups if WhatsApp did not open.)');
   };
 
   return createPortal(
