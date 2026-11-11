@@ -11,6 +11,9 @@ import {
   testFirestoreConnection,
   syncCatalogToFirestore,
   fetchCatalogFromFirestore,
+  signInStoreAdmin,
+  signOutStoreAdmin,
+  saveStoreSettingsToFirestore,
 } from '../services/firebase';
 import {
   RailItem,
@@ -152,7 +155,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // --------------------------------------------------------------------------
   // Admin Login Handler
   // --------------------------------------------------------------------------
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const correctUser = settings.adminUsername || 'admin';
     const correctPass = settings.adminPasswordHash || 'password123';
@@ -161,6 +164,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setIsAuthenticated(true);
       sessionStorage.setItem('runway_admin_auth', 'true');
       setLoginError('');
+      const email = import.meta.env.VITE_FIREBASE_ADMIN_EMAIL || '';
+      if (!email) {
+        setFirebaseStatus({
+          loading: false,
+          message: 'Shared saving needs VITE_FIREBASE_ADMIN_EMAIL and a Firebase admin account. This login is local only until cloud access is configured.',
+          type: 'error',
+        });
+        return;
+      }
+      const authResult = await signInStoreAdmin(email, loginPassword);
+      setFirebaseStatus({
+        loading: false,
+        message: authResult.message,
+        type: authResult.success ? 'success' : 'error',
+      });
     } else {
       setLoginError('Invalid username or password. Default is admin / password123');
     }
@@ -169,6 +187,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleLogout = () => {
     setIsAuthenticated(false);
     sessionStorage.removeItem('runway_admin_auth');
+    void signOutStoreAdmin();
   };
 
   // If not authenticated, show sleek Admin Login Form
@@ -815,11 +834,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // --------------------------------------------------------------------------
   // Settings & Firebase Handlers
   // --------------------------------------------------------------------------
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSettings(settingsForm);
     saveStoredSettings(settingsForm);
-    alert('Store settings saved successfully!');
+    setFirebaseStatus({ loading: true, message: 'Saving shared store settings...', type: 'info' });
+    const result = await saveStoreSettingsToFirestore(settingsForm);
+    setFirebaseStatus({
+      loading: false,
+      message: result.success
+        ? result.message
+        : `Saved only on this device. Shared save failed: ${result.message}`,
+      type: result.success ? 'success' : 'error',
+    });
+    alert(result.success
+      ? 'Store settings saved for all devices.'
+      : `Settings saved on this device only. To share them across devices: ${result.message}`);
   };
 
   const handleTestFirebase = async () => {
@@ -1958,7 +1988,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none bg-neutral-50 focus:bg-white"
                   />
                   <p className="text-[11px] text-neutral-400 mt-1">
-                    When customers tap "Order via WhatsApp", their cart details and subtotal will be sent to this number.
+                    This number is published to all shoppers when shared settings save successfully. The owner number must be in international format.
                   </p>
                 </div>
               </div>
