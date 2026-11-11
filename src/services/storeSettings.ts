@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   shopName: 'Try the Look',
   shopTagline: 'Six looks, styled head to toe. Tap a pin to see the piece.',
   currencySymbol: '$',
-  whatsappNumber: '15551234567',
+  whatsappNumber: '',
   adminUsername: 'admin',
   adminPasswordHash: 'password123',
   firebaseConfig: {
