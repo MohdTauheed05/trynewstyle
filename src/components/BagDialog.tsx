@@ -70,39 +70,8 @@ export const BagDialog: React.FC<BagDialogProps> = ({
     }
   };
 
-  const buildWaUrl = (
-    orderId: string,
-    lineItems: typeof items,
-    total: number,
-    name: string,
-    notes: string
-  ) => {
-    // Sanitize phone number (digits only)
-    const cleanPhone = (whatsappNumber || '15551234567').replace(/[^0-9]/g, '');
-
-    const lines: string[] = [
-      `🛍️ *New Order from ${shopName}*`,
-      `🧾 *Order ID:* ${orderId}`,
-      name ? `👤 *Customer:* ${name}` : '',
-      notes ? `📍 *Address/Notes:* ${notes}` : '',
-      '--------------------------------',
-      ...lineItems.map(
-        (item) =>
-          `• *${item.name}*\n  Size: ${item.size} | Qty: ${item.quantity} | ${formatCurrency(
-            item.price * item.quantity,
-            currencySymbol
-          )}`
-      ),
-      '--------------------------------',
-      `💰 *Total:* ${formatCurrency(total, currencySymbol)}`,
-      '',
-      'Please confirm availability and delivery timeframe! 🙌',
-    ].filter(Boolean);
-
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(lines.join('\n'))}`;
-  };
-
-  const handleOrderWhatsApp = () => {
+  /** Step 1: print the slip on screen (nothing is sent yet). */
+  const handlePrintSlip = () => {
     if (items.length === 0 || orderingRef.current) return;
     orderingRef.current = true;
     setTimeout(() => {
@@ -111,7 +80,6 @@ export const BagDialog: React.FC<BagDialogProps> = ({
 
     const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
     const snapshot = items.map((i) => ({ ...i }));
-    const waUrl = buildWaUrl(orderId, snapshot, subtotal, customerName, deliveryNotes);
 
     // Log order to Firestore (no-op when Firebase isn't configured)
     saveOrderToFirestore({
@@ -129,7 +97,6 @@ export const BagDialog: React.FC<BagDialogProps> = ({
       notes: deliveryNotes || undefined,
     });
 
-    // Build the receipt slip that animates in on this page
     setSlip({
       orderId,
       date: new Date().toLocaleString(undefined, {
@@ -148,13 +115,6 @@ export const BagDialog: React.FC<BagDialogProps> = ({
     });
 
     onClose();
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleResendWhatsApp = () => {
-    if (!slip) return;
-    const url = buildWaUrl(slip.orderId, slip.items, slip.total, slip.customerName || '', slip.notes || '');
-    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleExport = () => {
@@ -207,7 +167,7 @@ export const BagDialog: React.FC<BagDialogProps> = ({
         </div>
 
         <p className="bag-note">
-          Review your selected runway looks and pieces. Order directly via WhatsApp or download your shortlist.
+          Review your selected pieces, print your order slip, then send it on WhatsApp.
         </p>
 
         <div id="bag-items">
@@ -284,19 +244,15 @@ export const BagDialog: React.FC<BagDialogProps> = ({
             {/* WhatsApp Order CTA */}
             <button
               type="button"
-              onClick={handleOrderWhatsApp}
+              onClick={handlePrintSlip}
               className="w-full py-3.5 px-4 bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86.173.086.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.145.39-.086s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824zm-3.392-12.416c-5.523 0-10 4.477-10 10 0 1.765.459 3.424 1.261 4.869l-1.261 4.606 4.71-1.236c1.396.762 2.996 1.192 4.69 1.192 5.524 0 10-4.477 10-10s-4.476-10-10-10z" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 9V3h12v6" />
+                <rect x="3" y="9" width="18" height="8" rx="2" />
+                <path d="M6 14h12v7H6z" />
               </svg>
-              <span>Order via WhatsApp ({formatCurrency(subtotal, currencySymbol)})</span>
+              <span>Print slip to order with WhatsApp ({formatCurrency(subtotal, currencySymbol)})</span>
             </button>
           </div>
         )}
@@ -317,8 +273,8 @@ export const BagDialog: React.FC<BagDialogProps> = ({
       {slip && (
         <OrderSlip
           order={slip}
+          whatsappNumber={whatsappNumber}
           onClose={() => setSlip(null)}
-          onResendWhatsApp={handleResendWhatsApp}
           onClearCart={() => clearBag()}
         />
       )}
