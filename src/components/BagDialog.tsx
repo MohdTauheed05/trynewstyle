@@ -86,7 +86,7 @@ export const BagDialog: React.FC<BagDialogProps> = ({
       size,
       quantity,
       price,
-      image: /^https?:\\/\\//i.test(image) ? image : '',
+      image: (image.startsWith('https://') || image.startsWith('http://')) ? image : '',
       url,
     }));
     const shareData = {
@@ -110,7 +110,7 @@ export const BagDialog: React.FC<BagDialogProps> = ({
         size: i.size,
         quantity: i.quantity,
         price: i.price,
-        image: /^https?:\\/\\//i.test(i.image) ? i.image : '',
+        image: (i.image.startsWith('https://') || i.image.startsWith('http://')) ? i.image : '',
         url: i.url,
       })),
       total: subtotal,
