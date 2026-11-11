@@ -61,8 +61,11 @@ export function getStoredSettings(): StoreSettings {
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
     const merged = { ...DEFAULT_SETTINGS, ...parsed };
-    if (merged.whatsappNumber === '15551234567') {
-      merged.whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || '';
+    const deploymentNumber = import.meta.env.VITE_WHATSAPP_NUMBER || '';
+    if (deploymentNumber) {
+      merged.whatsappNumber = deploymentNumber;
+    } else if (merged.whatsappNumber === '15551234567') {
+      merged.whatsappNumber = '';
     }
     if (merged.shopName && merged.shopName.toLowerCase().includes('nike')) {
       merged.shopName = 'Try the Look';
