@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { RunwaySection } from './components/RunwaySection';
 import { BagDialog } from './components/BagDialog';
+import { OrderPage } from './components/OrderPage';
 import { AdminPanel } from './components/AdminPanel';
 import { OffcutRailSection } from './components/OffcutRailSection';
 import { LadiesDepthLookbook } from './components/LadiesDepthLookbook';
@@ -94,6 +95,18 @@ export default function App() {
   };
 
   const currentCurrency = cleanCurrencySymbol(settings.currencySymbol);
+  let sharedOrder: any = null;
+  if (typeof window !== 'undefined' && window.location.hash.startsWith('#order=')) {
+    try {
+      sharedOrder = JSON.parse(decodeURIComponent(window.location.hash.slice('#order='.length)));
+    } catch {
+      sharedOrder = null;
+    }
+  }
+
+  if (sharedOrder && Array.isArray(sharedOrder.items)) {
+    return <OrderPage order={sharedOrder} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#151413]">
