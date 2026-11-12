@@ -7,6 +7,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { OffcutRailSection } from './components/OffcutRailSection';
 import { LadiesDepthLookbook } from './components/LadiesDepthLookbook';
 import { LadiesRailSection } from './components/LadiesRailSection';
+import { VirtualStudio } from './components/VirtualStudio';
 import { Look, Product } from './types';
 import { getStoredLooks, getStoredProducts, saveLooks, saveProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
@@ -271,6 +272,12 @@ export default function App() {
               currencySymbol={currentCurrency}
               whatsappNumber={settings.whatsappNumber}
               onOpenBag={() => setIsBagOpen(true)}
+            />
+
+            <VirtualStudio
+              shopName={settings.shopName}
+              currencySymbol={currentCurrency}
+              products={products}
             />
           </main>
 
