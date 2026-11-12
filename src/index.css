@@ -2900,3 +2900,60 @@ button:focus-visible, a:focus-visible {
 }
 .vs-look-select img { flex: 0 0 auto; }
 .vs-look-card .favorite { z-index: 1; }
+
+.vs-worn-section {
+  position: relative;
+  z-index: 2;
+  margin: 8px 0 12px;
+  padding: 20px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 22px;
+  background: rgba(38,36,40,.38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+}
+.vs-worn-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.vs-worn-heading h2 { margin: 5px 0 0; font-size: 22px; font-weight: 500; }
+.vs-worn-heading > span { color: rgba(255,255,255,.7); font-size: 12px; }
+.vs-worn-products { display: grid; grid-template-columns: repeat(auto-fill,minmax(210px,1fr)); gap: 12px; }
+.vs-worn-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 16px;
+  background: rgba(255,255,255,.08);
+}
+.vs-worn-image { display: grid; height: 190px; place-items: center; overflow: hidden; border-radius: 11px; background: rgba(255,255,255,.12); }
+.vs-worn-image img { width: 100%; height: 100%; object-fit: contain; }
+.vs-worn-copy { display: flex; min-height: 76px; flex-direction: column; gap: 5px; padding: 10px 2px; }
+.vs-worn-copy strong { font-size: 13px; }
+.vs-worn-copy > span { color: rgba(255,255,255,.85); font-size: 12px; }
+.vs-worn-copy small { display: -webkit-box; overflow: hidden; color: rgba(255,255,255,.65); font-size: 10px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.vs-worn-card > button {
+  min-height: 40px;
+  border: 1px solid #fff;
+  border-radius: 10px;
+  color: #191a1d;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.vs-worn-card > button:hover { background: rgba(255,255,255,.84); }
+.vs-worn-empty { margin: 0; padding: 18px; border: 1px dashed rgba(255,255,255,.4); border-radius: 14px; color: rgba(255,255,255,.8); font-size: 12px; line-height: 1.6; }
+.vs-product-look-label { color: rgba(255,255,255,.64); font-size: 9px; }
+@media (max-width: 900px) {
+  .vs-worn-section { margin: 0; padding: 14px; }
+  .vs-worn-products { grid-template-columns: repeat(auto-fill,minmax(155px,1fr)); gap: 9px; }
+  .vs-worn-image { height: 150px; }
+}
+@media (max-width: 420px) {
+  .vs-worn-products { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+  .vs-worn-card { padding: 7px; }
+  .vs-worn-image { height: 132px; }
+  .vs-worn-copy { min-height: 68px; }
+  .vs-worn-heading h2 { font-size: 18px; }
+}
