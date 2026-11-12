@@ -137,14 +137,53 @@ export default function App() {
   let sharedOrder: any = null;
   if (typeof window !== 'undefined' && window.location.hash.startsWith('#order=')) {
     try {
-      sharedOrder = JSON.parse(decodeURIComponent(window.location.hash.slice('#order='.length)));
+      const encodedOrder = window.location.hash.slice('#order='.length);
+      if (encodedOrder.startsWith('v1.')) {
+        const base64 = encodedOrder.slice(3).replace(/-/g, '+').replace(/_/g, '/');
+        const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+        const bytes = Uint8Array.from(atob(paddedBase64), (char) => char.charCodeAt(0));
+        const payload = JSON.parse(new TextDecoder().decode(bytes));
+        if (payload.v === 1 && Array.isArray(payload.i)) {
+          sharedOrder = {
+            orderId: payload.o,
+            date: new Date(payload.d).toISOString(),
+            shopName: payload.s,
+            items: payload.i.map(([id, name, size, quantity, price, url]: [string, string, string, number, number, string]) => ({
+              id, name, size, quantity, price, url,
+            })),
+            total: payload.t,
+            currencySymbol: payload.c,
+          };
+        }
+      } else {
+        // Continue to support order links generated before compact links were introduced.
+        sharedOrder = JSON.parse(decodeURIComponent(encodedOrder));
+      }
     } catch {
       sharedOrder = null;
     }
   }
 
   if (sharedOrder && Array.isArray(sharedOrder.items)) {
-    return <OrderPage order={sharedOrder} />;
+    const storedRailItems = getStoredRailItems();
+    const storedLadiesPieces = getStoredLadiesPieces();
+    const storedLadiesRailItems = getStoredLadiesRailItems();
+    const orderWithPhotos = {
+      ...sharedOrder,
+      items: sharedOrder.items.map((item: any) => {
+        const product = products.find((candidate) =>
+          candidate.name === item.name || item.id === candidate.id || item.id.startsWith(`${candidate.id}-`)
+        );
+        const railItem = storedRailItems.find((candidate) => candidate.id === item.id || candidate.name === item.name);
+        const ladiesPiece = storedLadiesPieces.find((candidate) => candidate.id === item.id || candidate.name === item.name);
+        const ladiesRailItem = storedLadiesRailItems.find((candidate) => candidate.id === item.id || candidate.name === item.name);
+        return {
+          ...item,
+          image: item.image || product?.image || railItem?.image || ladiesPiece?.customImage || ladiesRailItem?.image,
+        };
+      }),
+    };
+    return <OrderPage order={orderWithPhotos} />;
   }
 
   return (
