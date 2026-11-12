@@ -213,8 +213,9 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
   const categories = ['All', 'Everyday', 'Athletic', 'Sleep', 'Formal', 'Party', 'Street'];
   const visibleLooks = LOOKS.map((look, index) => ({ ...look, index }))
     .filter((look) => category === 'All' || look.category === category);
-  const visibleProducts = products.filter((product) =>
-    product.image && !product.image.startsWith('data:')
+  const visibleProducts = products.filter((product) => product.image);
+  const wornProducts = products.filter((product) =>
+    product.virtualStudioLook === LOOKS[scene.look].name && Boolean(product.image)
   );
 
   return (
@@ -314,6 +315,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                         <img src={product.image} alt="" loading="lazy" />
                       </button>
                       <strong>{product.name}</strong>
+                      {product.virtualStudioLook && <small className="vs-product-look-label">Worn in {product.virtualStudioLook}</small>}
                       <span>{formatCurrency(product.price, currencySymbol)}</span>
                       <div className="vs-product-actions">
                         <button type="button" onClick={() => setSelectedProduct(product)}>Details</button>
@@ -372,6 +374,34 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             }}>{saved.includes(scene.look) ? '✓ Saved' : '☆ Save look'}</button>
           </div>
         </div>
+        <section className="vs-worn-section" aria-labelledby="vs-worn-title">
+          <div className="vs-worn-heading">
+            <div>
+              <span className="vs-eyebrow">SHOP THE MODEL</span>
+              <h2 id="vs-worn-title">Worn in {LOOKS[scene.look].name}</h2>
+            </div>
+            <span>{wornProducts.length} {wornProducts.length === 1 ? 'piece' : 'pieces'}</span>
+          </div>
+          {wornProducts.length ? (
+            <div className="vs-worn-products">
+              {wornProducts.map((product) => (
+                <article className="vs-worn-card" key={product.id}>
+                  <div className="vs-worn-image"><img src={product.image} alt={product.name + ' product photo'} loading="lazy" /></div>
+                  <div className="vs-worn-copy">
+                    <strong>{product.name}</strong>
+                    <span>{formatCurrency(product.price, currencySymbol)}</span>
+                    {product.fitDescription && <small>{product.fitDescription}</small>}
+                  </div>
+                  <button type="button" onClick={() => addProduct(product)}>Add to bag</button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="vs-worn-empty">
+              No products are linked to this outfit yet. In Admin → Clothes Inventory, edit each matching item and choose “{LOOKS[scene.look].name}” under Virtual Studio Outfit Match.
+            </p>
+          )}
+        </section>
         <p className="vs-photo-note">{photoMessage || 'Camera selfies stay in this browser. To generate your face wearing selected clothes, connect an AI try-on service.'}</p>
       </div>
 
