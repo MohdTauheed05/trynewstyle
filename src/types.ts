@@ -44,6 +44,7 @@ export interface Look {
   productIds: string[];
   pins: LookPin[];
   isCustom?: boolean;
+  modelGroup?: 'men' | 'ladies' | 'western';
 }
 
 export interface BagItem {
