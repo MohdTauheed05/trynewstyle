@@ -165,7 +165,6 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
     const x = 50 + Math.sin(angle) * rx;
     const centerY = mobile ? 58 : 60;
     const y = centerY + Math.cos(angle) * ry;
-    const entry = ringEntries[index];
     const scale = 0.9;
     const inRing = true;
     return {
