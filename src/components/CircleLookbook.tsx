@@ -103,7 +103,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
     const visibleSlots = Math.min(9, count);
     const angle = delta * (Math.PI * 2 / visibleSlots);
     const depth = (1 + Math.cos(angle)) / 2;
-    const mobile = typeof window !== 'undefined' && window.innerWidth < 700;
+    const mobile = typeof window !== 'undefined' && window.innerWidth < 901;
     const rx = mobile ? 35 : 32;
     const ry = mobile ? 18 : 22;
     const x = 50 + Math.sin(angle) * rx;
@@ -145,7 +145,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         .cl-item img,.cl-item-thumb{width:70px;height:70px;border-radius:50%;object-fit:cover;background:#f1f1f1;flex:none}.cl-item-title{display:grid;gap:4px;min-width:0}.cl-item-title strong{font:12px Arial,sans-serif;text-transform:uppercase;max-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cl-item-title small{font:11px Arial,sans-serif;color:#777}
         .cl-item button{border:0;border-radius:50%;width:34px;height:34px;background:#111;color:#fff;cursor:pointer;flex:none;font-size:14px;line-height:1}
         .cl-empty{font:11px Arial,sans-serif;color:#888}.cl-shop-link{font:9px Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;margin-top:auto;text-align:right}
-        @media(max-width:700px){.circle-lookbook{height:100svh;min-height:570px;padding:0 12px}.cl-top{height:54px}.cl-signal{display:none}.cl-brand{position:static;transform:none}.cl-stage{inset:54px 0 148px}
+        @media(max-width:900px){.circle-lookbook{height:100svh;min-height:570px;padding:0 12px}.cl-top{height:54px}.cl-signal{display:none}.cl-brand{position:static;transform:none}.cl-stage{inset:54px 0 148px}
           .cl-stage{inset:54px 0 165px}.cl-ring{width:78vw;height:36vh;top:59%}.cl-orbit-model{width:clamp(72px,20vw,142px);height:clamp(155px,30vh,285px)}
           .cl-dock{top:auto;left:10px;right:10px;bottom:0;width:auto;min-height:154px;max-height:165px;display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 0 13px;border-left:0;border-top:1px solid #e6e6e6;overflow:hidden}.cl-dock-info{grid-column:1}.cl-items{grid-column:1/-1;grid-row:2;flex-direction:row;overflow-x:auto;overflow-y:hidden}.cl-shop-link{grid-column:2;grid-row:1}.cl-item{width:auto;min-width:185px;height:78px;min-height:78px}.cl-item img,.cl-item-thumb{width:60px;height:60px}}
         @media(max-width:390px){.cl-orbit-model{width:19vw;height:23vh}.cl-ring{width:82vw;height:32vh}.cl-stage{inset:54px 0 170px}.cl-item{min-width:172px}.cl-item-title strong{max-width:80px}}
