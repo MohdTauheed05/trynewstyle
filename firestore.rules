@@ -8,64 +8,64 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
     }
 
-    // Default: deny everything
+    // Deny access unless a rule below explicitly allows it.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Storefront data is public to read; only a provisioned store admin can write.
-    match /products/{id}  { allow read: if true; allow write: if isStoreAdmin(); }
-    match /looks/{id}     { allow read: if true; allow write: if isStoreAdmin(); }
-    match /settings/{id}  { allow read: if true; allow write: if isStoreAdmin(); }
-    match /system/{id}    { allow read: if true; }
+    // Public storefront data; only a provisioned admin may change it.
+    match /products/{id} {
+      allow read: if true;
+      allow write: if isStoreAdmin();
+    }
+    match /looks/{id} {
+      allow read: if true;
+      allow write: if isStoreAdmin();
+    }
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isStoreAdmin();
+    }
+    match /system/{id} {
+      allow read: if true;
+    }
 
-    // Provision admin role documents manually in Firebase Console.
-    match /admins/{uid} { allow read, write: if false; }
+    // Admin role records are provisioned manually in Firebase Console.
+    match /admins/{uid} {
+      allow read, write: if false;
+    }
 
-    // A 12-character random token opens one minimal order snapshot. Direct document
-    // reads are public, but listing, editing, and deleting share records are denied.
-    // The share snapshot deliberately contains no customer contact or delivery notes.
+    // Order pages use an unguessable 12-character token. Only direct reads are
+    // public; listing, updates, and deletes are denied. These records contain
+    // product/order details only, never customer contact or delivery notes.
     match /orderShares/{token} {
       allow get: if true;
       allow list, update, delete: if false;
-      allow create: if token.matches('^[A-Za-z0-9_-]{12}
-    match /orders/{orderId} {
-      allow create: if request.resource.data.orderId is string
-                    && request.resource.data.orderId.size() < 40
-                    && request.resource.data.items is list
-                    && request.resource.data.items.size() > 0
-                    && request.resource.data.items.size() <= 50
-                    && request.resource.data.total is number
-                    && request.resource.data.total >= 0;
-      allow read, update, delete: if isStoreAdmin();
-    }
-  }
-}
-)
-                    && request.resource.data.keys().hasOnly([
-                      'orderId', 'date', 'shopName', 'items', 'total', 'currencySymbol'
-                    ])
-                    && request.resource.data.orderId is string
-                    && request.resource.data.orderId.size() <= 40
-                    && request.resource.data.date is string
-                    && request.resource.data.shopName is string
-                    && request.resource.data.items is list
-                    && request.resource.data.items.size() > 0
-                    && request.resource.data.items.size() <= 50
-                    && request.resource.data.total is number
-                    && request.resource.data.total >= 0
-                    && request.resource.data.currencySymbol is string;
+      allow create: if token.matches('^[A-Za-z0-9_-]{12}$')
+        && request.resource.data.keys().hasOnly([
+          'orderId', 'date', 'shopName', 'items', 'total', 'currencySymbol'
+        ])
+        && request.resource.data.orderId is string
+        && request.resource.data.orderId.size() <= 40
+        && request.resource.data.date is string
+        && request.resource.data.shopName is string
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.total is number
+        && request.resource.data.total >= 0
+        && request.resource.data.currencySymbol is string;
     }
 
-    // Shoppers can create a well-formed order. Only a store admin can view/manage orders.
+    // Shoppers may create well-formed private orders. Only admins can read/manage them.
     match /orders/{orderId} {
       allow create: if request.resource.data.orderId is string
-                    && request.resource.data.orderId.size() < 40
-                    && request.resource.data.items is list
-                    && request.resource.data.items.size() > 0
-                    && request.resource.data.items.size() <= 50
-                    && request.resource.data.total is number
-                    && request.resource.data.total >= 0;
+        && request.resource.data.orderId.size() < 40
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.total is number
+        && request.resource.data.total >= 0;
       allow read, update, delete: if isStoreAdmin();
     }
   }
