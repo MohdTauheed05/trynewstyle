@@ -17,7 +17,7 @@ const STUDIO_CDN = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwI
 import { LADIES_LOOK_BOUNDS, LADIES_MODEL_Y0, LADIES_MODEL_Y1, LADIES_MODELS_SHEET, LADIES_PIECES_SHEET, getStoredLadiesPieces, getStoredLadiesSettings } from '../services/ladiesStorage';
 
 interface CircleLookbookProps { looks: Look[]; products: Product[]; shopName: string; currencySymbol: string; }
-type Entry = { id: string; name: string; image: string; group: 'men' | 'women'; products: Product[]; ladiesPieces?: LadiesPiece[]; crop?: [number, number, number, number]; };
+type Entry = { id: string; name: string; image: string; group: 'men' | 'women'; products: Product[]; ladiesPieces?: LadiesPiece[]; crop?: [number, number, number, number]; visualScale?: number; };
 
 export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products, shopName, currencySymbol }) => {
   const [ladiesPieces, setLadiesPieces] = useState(() => getStoredLadiesPieces());
@@ -29,9 +29,23 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
 
   useEffect(() => {
     if (!isZoomed) return;
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const previous = { position: body.style.position, top: body.style.top, width: body.style.width, overflow: body.style.overflow };
+    body.style.position = 'fixed';
+    body.style.top = '-' + scrollY + 'px';
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setIsZoomed(false); };
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      body.style.position = previous.position;
+      body.style.top = previous.top;
+      body.style.width = previous.width;
+      body.style.overflow = previous.overflow;
+      window.scrollTo(0, scrollY);
+    };
   }, [isZoomed]);
 
   useEffect(() => {
@@ -55,6 +69,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         id: 'ladies-depth-' + lookNumber, name: 'Ladies Look ' + String(lookNumber).padStart(2, '0'),
         image: LADIES_MODELS_SHEET, group: 'women' as const, products: [],
         ladiesPieces: ladiesPieces.filter((piece) => piece.lookNumber === lookNumber),
+        visualScale: 0.78,
         crop: [x0, x1, LADIES_MODEL_Y0, LADIES_MODEL_Y1] as [number, number, number, number],
       };
     });
@@ -132,7 +147,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
     const ry = mobile ? 18 : 19;
     const x = 50 + Math.sin(angle) * rx;
     const y = (mobile ? 59 : 60) + Math.cos(angle) * ry;
-    const scale = 0.62 + depth * 0.50;
+    const scale = (0.62 + depth * 0.50) * (ringEntries[index]?.visualScale || 1);
     const inRing = true;
     return {
       left: x + '%', top: y + '%', zIndex: Math.round(depth * 100) + 1,
@@ -168,9 +183,9 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         .cl-item{flex:0 0 auto;width:100%;min-width:0;max-width:none;min-height:94px;height:auto;border:1px dashed #ccc;border-radius:99px;padding:5px 13px 5px 6px;display:flex;align-items:center;gap:10px;background:#fff}
         .cl-item img,.cl-item-thumb{width:70px;height:70px;border-radius:50%;object-fit:cover;background:#f1f1f1;flex:none}.cl-item-title{display:grid;gap:4px;min-width:0}.cl-item-title strong{font:12px Arial,sans-serif;text-transform:uppercase;max-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cl-item-title small{font:11px Arial,sans-serif;color:#777}
         .cl-item button{border:0;border-radius:50%;width:34px;height:34px;background:#111;color:#fff;cursor:pointer;flex:none;font-size:14px;line-height:1}
-        .cl-zoom-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.58);display:grid;place-items:center;padding:12px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}.cl-zoom-card{position:relative;width:min(92vw,700px);height:min(86dvh,780px);max-height:calc(100dvh - 24px);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 10px}.cl-zoom-close{position:fixed;right:calc(env(safe-area-inset-right) + 12px);top:calc(env(safe-area-inset-top) + 12px);z-index:10001;width:46px;height:46px;border:1px solid #222;border-radius:50%;background:#fff;font-size:26px;line-height:1;cursor:pointer;box-shadow:0 2px 12px #0005}.cl-zoom-image{width:100%;height:calc(100% - 28px);min-height:0;display:grid;place-items:center;overflow:visible}.cl-zoom-image img{display:block;width:auto;height:auto;max-width:88vw;max-height:78dvh;object-fit:contain;object-position:center}.cl-zoom-image svg{display:block;width:auto;height:100%;max-width:88vw;max-height:78dvh;object-fit:contain}.cl-zoom-name{font:12px Arial,sans-serif;letter-spacing:.16em;text-transform:uppercase;margin-top:10px;color:#fff;text-shadow:0 1px 4px #000}
+        .cl-zoom-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.58);display:grid;place-items:center;padding:12px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}.cl-zoom-card{position:relative;width:min(92vw,700px);height:min(78dvh,720px);max-height:calc(100dvh - 24px);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 10px}.cl-zoom-close{position:absolute;left:calc(50% + clamp(70px, 24vw, 180px));top:clamp(90px, 16vh, 150px);transform:translate(-50%,-50%);z-index:10001;width:46px;height:46px;border:1px solid #222;border-radius:50%;background:#fff;font-size:26px;line-height:1;cursor:pointer;box-shadow:0 2px 12px #0005}.cl-zoom-image{width:100%;height:calc(100% - 28px);min-height:0;display:grid;place-items:center;overflow:visible}.cl-zoom-image img{display:block;width:auto;height:auto;max-width:88vw;max-height:64dvh;object-fit:contain;object-position:center}.cl-zoom-image svg{display:block;width:auto;height:100%;max-width:88vw;max-height:78dvh;object-fit:contain}.cl-zoom-name{font:12px Arial,sans-serif;letter-spacing:.16em;text-transform:uppercase;margin-top:10px;color:#fff;text-shadow:0 1px 4px #000}
         .cl-empty{font:11px Arial,sans-serif;color:#888}.cl-shop-link{font:9px Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;margin-top:auto;text-align:right}
-        @media(max-width:900px){.cl-zoom-card{width:94vw;height:82dvh;max-height:calc(100dvh - 20px);padding:58px 6px 12px}.cl-zoom-image{height:calc(100% - 32px)}.cl-zoom-image img{max-width:88vw;max-height:68dvh}.cl-zoom-image svg{max-width:88vw;max-height:68dvh}.cl-zoom-close{top:calc(env(safe-area-inset-top) + 10px);right:calc(env(safe-area-inset-right) + 10px);width:48px;height:48px}.circle-lookbook{height:100svh;min-height:570px;padding:0 12px}.cl-top{height:54px}.cl-signal{display:none}.cl-brand{position:static;transform:none}.cl-stage{inset:54px 0 148px}
+        @media(max-width:900px){.cl-zoom-card{width:94vw;height:74dvh;max-height:calc(100dvh - 20px);padding:12px 6px}.cl-zoom-image{height:calc(100% - 32px)}.cl-zoom-image img{max-width:88vw;max-height:56dvh}.cl-zoom-image svg{max-width:88vw;max-height:56dvh}.cl-zoom-close{top:clamp(92px, 15vh, 132px);left:calc(50% + clamp(65px, 22vw, 98px));width:48px;height:48px}.circle-lookbook{height:100svh;min-height:570px;padding:0 12px}.cl-top{height:54px}.cl-signal{display:none}.cl-brand{position:static;transform:none}.cl-stage{inset:54px 0 148px}
           .cl-stage{inset:54px 0 165px}.cl-ring{width:72vw;height:34vh;top:59%}.cl-orbit-model{width:clamp(72px,20vw,142px);height:clamp(180px,34vh,320px)}
           .cl-dock{top:auto;left:10px;right:10px;bottom:0;width:auto;min-height:154px;max-height:165px;display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 0 13px;border-left:0;border-top:1px solid #e6e6e6;overflow:hidden}.cl-dock-info{grid-column:1}.cl-items{grid-column:1/-1;grid-row:2;flex-direction:row;overflow-x:auto;overflow-y:hidden}.cl-shop-link{grid-column:2;grid-row:1}.cl-item{width:auto;min-width:185px;height:78px;min-height:78px}.cl-item img,.cl-item-thumb{width:60px;height:60px}}
         @media(max-width:390px){.cl-orbit-model{width:19vw;height:23vh}.cl-ring{width:76vw;height:31vh}.cl-stage{inset:54px 0 170px}.cl-item{min-width:172px}.cl-item-title strong{max-width:80px}}
