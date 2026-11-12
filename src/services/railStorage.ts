@@ -54,6 +54,9 @@ export function resetRailItems(): RailItem[] {
   try {
     localStorage.removeItem(STORAGE_KEY_RAIL);
     window.dispatchEvent(new CustomEvent('runway:rail_updated'));
+    void saveSharedSectionToFirestore('shared_rail', { items: DEFAULT_RAIL_ITEMS }).then((result) => {
+      if (!result.success) console.error(result.message);
+    });
   } catch (e) {
     console.error('Failed to reset rail items', e);
   }
