@@ -8,10 +8,13 @@ import { OffcutRailSection } from './components/OffcutRailSection';
 import { LadiesDepthLookbook } from './components/LadiesDepthLookbook';
 import { LadiesRailSection } from './components/LadiesRailSection';
 import { Look, Product } from './types';
-import { getStoredLooks, getStoredProducts } from './services/catalogStorage';
+import { getStoredLooks, getStoredProducts, saveLooks, saveProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
 import { getStoredSettings, saveStoredSettings, StoreSettings, cleanCurrencySymbol } from './services/storeSettings';
-import { fetchStoreSettingsFromFirestore } from './services/firebase';
+import { fetchCatalogFromFirestore, fetchSharedSectionFromFirestore, fetchStoreSettingsFromFirestore } from './services/firebase';
+import { getStoredRailItems, saveRailItems } from './services/railStorage';
+import { getStoredLadiesPieces, getStoredLadiesSettings, saveLadiesPieces, saveLadiesSettings } from './services/ladiesStorage';
+import { getStoredLadiesRailItems, saveLadiesRailItems } from './services/ladiesRailStorage';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'runway' | 'admin'>(() => {
@@ -97,12 +100,34 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    fetchStoreSettingsFromFirestore().then((cloudSettings) => {
-      if (!active || !cloudSettings) return;
-      const merged = { ...getStoredSettings(), ...cloudSettings };
-      saveStoredSettings(merged);
-      setSettings(merged);
-    });
+    const loadSharedStoreData = async () => {
+      const [cloudSettings, catalog, rail, ladies, ladiesRail] = await Promise.all([
+        fetchStoreSettingsFromFirestore(),
+        fetchCatalogFromFirestore(),
+        fetchSharedSectionFromFirestore<{ items?: ReturnType<typeof getStoredRailItems> }>('shared_rail'),
+        fetchSharedSectionFromFirestore<{ pieces?: ReturnType<typeof getStoredLadiesPieces>; settings?: ReturnType<typeof getStoredLadiesSettings> }>('shared_ladies'),
+        fetchSharedSectionFromFirestore<{ items?: ReturnType<typeof getStoredLadiesRailItems> }>('shared_ladies_rail'),
+      ]);
+      if (!active) return;
+      if (cloudSettings) {
+        const merged = { ...getStoredSettings(), ...cloudSettings };
+        saveStoredSettings(merged);
+        setSettings(merged);
+      }
+      if (catalog?.products.length) {
+        saveProducts(catalog.products, false);
+        setProducts(catalog.products);
+      }
+      if (catalog?.looks.length) {
+        saveLooks(catalog.looks, false);
+        setLooks(catalog.looks);
+      }
+      if (rail?.items) saveRailItems(rail.items, false);
+      if (ladies?.pieces) saveLadiesPieces(ladies.pieces, false);
+      if (ladies?.settings) saveLadiesSettings(ladies.settings, false);
+      if (ladiesRail?.items) saveLadiesRailItems(ladiesRail.items, false);
+    };
+    void loadSharedStoreData().catch((error) => console.error('Failed to load shared Firestore data:', error));
     return () => {
       active = false;
     };
