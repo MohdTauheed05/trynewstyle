@@ -49,6 +49,11 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
   }, []);
 
   const fileName = `order-slip-${order.orderId}.png`;
+  const toShareableProductUrl = (url?: string) => {
+    if (!url || url === '#') return '';
+    if (url.startsWith('#')) return `${window.location.origin}${window.location.pathname}${url}`;
+    return url;
+  };
   const caption = [
     `🧾 *Order ${order.orderId}* - ${order.shopName}`,
     order.customerName ? `👤 ${order.customerName}` : '',
