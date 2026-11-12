@@ -278,6 +278,7 @@ export default function App() {
               shopName={settings.shopName}
               currencySymbol={currentCurrency}
               products={products}
+              looks={looks}
             />
           </main>
 
