@@ -8,6 +8,7 @@ import { OffcutRailSection } from './components/OffcutRailSection';
 import { LadiesDepthLookbook } from './components/LadiesDepthLookbook';
 import { LadiesRailSection } from './components/LadiesRailSection';
 import { VirtualStudio } from './components/VirtualStudio';
+import { CircleLookbook } from './components/CircleLookbook';
 import { Look, Product } from './types';
 import { getStoredLooks, getStoredProducts, saveLooks, saveProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
@@ -280,6 +281,13 @@ export default function App() {
               currencySymbol={currentCurrency}
               products={products}
               looks={looks}
+            />
+
+            <CircleLookbook
+              shopName={settings.shopName}
+              currencySymbol={currentCurrency}
+              looks={looks}
+              products={products}
             />
           </main>
 
