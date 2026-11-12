@@ -102,8 +102,8 @@ export const BagDialog: React.FC<BagDialogProps> = ({
     const tokenBytes = new Uint8Array(9);
     window.crypto.getRandomValues(tokenBytes);
     const shareToken = btoa(String.fromCharCode(...tokenBytes))
-      .replace(/\\+/g, '-')
-      .replace(/\\//g, '_')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
       .replace(/=+$/g, '');
     const shareRecord = {
       orderId,
