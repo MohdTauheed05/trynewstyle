@@ -24,6 +24,14 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   const [firstLadiesLook, setFirstLadiesLook] = useState(() => getStoredLadiesSettings().firstLookNumber || 15);
   const wheelLock = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  useEffect(() => {
+    if (!isZoomed) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setIsZoomed(false); };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isZoomed]);
 
   useEffect(() => {
     const sync = () => { setLadiesPieces(getStoredLadiesPieces()); setFirstLadiesLook(getStoredLadiesSettings().firstLookNumber || 15); };
@@ -144,6 +152,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         .cl-item{flex:0 0 auto;width:100%;min-width:0;max-width:none;min-height:94px;height:auto;border:1px dashed #ccc;border-radius:99px;padding:5px 13px 5px 6px;display:flex;align-items:center;gap:10px;background:#fff}
         .cl-item img,.cl-item-thumb{width:70px;height:70px;border-radius:50%;object-fit:cover;background:#f1f1f1;flex:none}.cl-item-title{display:grid;gap:4px;min-width:0}.cl-item-title strong{font:12px Arial,sans-serif;text-transform:uppercase;max-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cl-item-title small{font:11px Arial,sans-serif;color:#777}
         .cl-item button{border:0;border-radius:50%;width:34px;height:34px;background:#111;color:#fff;cursor:pointer;flex:none;font-size:14px;line-height:1}
+        .cl-zoom-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.78);display:grid;place-items:center;padding:24px}.cl-zoom-card{position:relative;width:min(92vw,900px);height:min(88svh,820px);background:#f5f5f3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:38px 24px 22px}.cl-zoom-close{position:absolute;right:14px;top:12px;width:42px;height:42px;border:1px solid #222;border-radius:50%;background:#fff;font-size:26px;line-height:1;cursor:pointer}.cl-zoom-image{width:100%;height:calc(100% - 34px);display:grid;place-items:center}.cl-zoom-image img,.cl-zoom-image svg{width:100%;height:100%;object-fit:contain;object-position:center}.cl-zoom-name{font:12px Arial,sans-serif;letter-spacing:.16em;text-transform:uppercase;margin-top:10px}
         .cl-empty{font:11px Arial,sans-serif;color:#888}.cl-shop-link{font:9px Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;margin-top:auto;text-align:right}
         @media(max-width:900px){.circle-lookbook{height:100svh;min-height:570px;padding:0 12px}.cl-top{height:54px}.cl-signal{display:none}.cl-brand{position:static;transform:none}.cl-stage{inset:54px 0 148px}
           .cl-stage{inset:54px 0 165px}.cl-ring{width:72vw;height:34vh;top:59%}.cl-orbit-model{width:clamp(72px,20vw,142px);height:clamp(180px,34vh,320px)}
@@ -161,7 +170,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
           <div className="cl-ring" />
           <div className="cl-center-title">Stay out<br/>of the loop<div className="cl-subtitle">Vol. 01 — {ringEntries.length} looks</div></div>
           {ringEntries.map((entry, index) => (
-            <button key={entry.id} type="button" className="cl-orbit-model" style={getOrbitStyle(index)} aria-current={index === selectedIndex} aria-label={'View ' + entry.name} onClick={() => setActiveIndex(index)}>
+            <button key={entry.id} type="button" className="cl-orbit-model" style={getOrbitStyle(index)} aria-current={index === selectedIndex} aria-label={'Zoom in on ' + entry.name} onClick={() => { setActiveIndex(index); setIsZoomed(true); }}>
               {renderModel(entry, false)}
               <span>{entry.name}</span>
             </button>
@@ -184,6 +193,15 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
           </div>
           <span className="cl-shop-link">Shop this look&nbsp; +</span>
         </footer>
+        {isZoomed && active && (
+          <div className="cl-zoom-overlay" role="presentation" onClick={() => setIsZoomed(false)}>
+            <div className="cl-zoom-card" role="dialog" aria-modal="true" aria-label={active.name} onClick={(event) => event.stopPropagation()}>
+              <button type="button" className="cl-zoom-close" aria-label="Close enlarged model" onClick={() => setIsZoomed(false)}>×</button>
+              <div className="cl-zoom-image">{renderModel(active, true)}</div>
+              <span className="cl-zoom-name">{active.name}</span>
+            </div>
+          </div>
+        )}
       </> : <p className="cl-empty">Add male or female models in Admin to feature them here.</p>}
     </section>
   );
