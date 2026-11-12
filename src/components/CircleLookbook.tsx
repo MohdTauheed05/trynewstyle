@@ -58,7 +58,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   });
 
   const shopItems = active ? [
-    ...active.products.map((product) => ({ id: product.id, name: product.name, image: product.image, price: product.price, add: () => addProduct(product) })),
+    ...active.products.map((product) => ({ id: product.id, name: product.name, image: product.image, price: product.price, piece: undefined, add: () => addProduct(product) })),
     ...(active.ladiesPieces || []).map((piece) => ({ id: piece.id, name: piece.name, image: piece.customImage || '', price: piece.price, piece, add: () => addPiece(piece) })),
   ] : [];
 
@@ -83,7 +83,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   };
 
   const renderModel = (entry: Entry, label: boolean) => entry.crop ? (
-    <svg viewBox={entry.crop[0] + ' ' + entry.crop[2] + ' ' + (entry.crop[1] - entry.crop[0]) + ' ' + (entry.crop[3] - entry.crop[2]} preserveAspectRatio="none" aria-label={label ? entry.name : undefined}>
+    <svg viewBox={entry.crop[0] + ' ' + entry.crop[2] + ' ' + (entry.crop[1] - entry.crop[0]) + ' ' + (entry.crop[3] - entry.crop[2])} preserveAspectRatio="none" aria-label={label ? entry.name : undefined}>
       <image href={entry.image} width="960" height="720" preserveAspectRatio="none" />
     </svg>
   ) : <img src={entry.image} alt={label ? entry.name : ''} draggable={false} loading="lazy" />;
