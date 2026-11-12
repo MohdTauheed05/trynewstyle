@@ -3235,3 +3235,13 @@ button:focus-visible, a:focus-visible {
   .vs-worn-section { padding: 8px; }
   .vs-worn-image { height: 82px; }
 }
+
+/* Western studio no longer has the bottom toolbar or collection tab. */
+@media (min-width: 901px) {
+  .vs-stage { grid-template-rows: minmax(390px, 55svh) minmax(170px, auto); }
+  .vs-panel { grid-row: 1 / span 2; }
+}
+@media (max-width: 900px) {
+  .vs-stage { grid-template-rows: minmax(250px, 40svh) auto; }
+  .vs-panel { grid-row: 1; }
+}
