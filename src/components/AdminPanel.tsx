@@ -121,7 +121,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     vendor: 'Studio Collection',
     price: '149.00',
     category: 'top' as Product['category'],
-    virtualStudioLook: '',
     image: '',
     sizes: 'S, M, L, XL',
     optionLegend: 'Size',
@@ -318,7 +317,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       vendor: settings.shopName || 'Studio Collection',
       price: '149.00',
       category: 'top',
-      virtualStudioLook: '',
       image: 'https://reel-ref-try-the-look.vercel.app/assets/source-tshirt.webp',
       sizes: 'S, M, L, XL',
       optionLegend: 'Size',
@@ -337,7 +335,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       vendor: product.vendor,
       price: product.price.toString(),
       category: product.category || 'top',
-      virtualStudioLook: product.virtualStudioLook || '',
       image: product.image,
       sizes: product.sizes.join(', '),
       optionLegend: product.optionLegend,
@@ -380,7 +377,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         vendor: productForm.vendor,
         price: parsedPrice,
         category: productForm.category,
-        virtualStudioLook: productForm.virtualStudioLook || undefined,
         image: productForm.image,
         sizes: sizesArray,
         optionLegend: productForm.optionLegend,
@@ -2266,23 +2262,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   placeholder="S, M, L, XL or 40, 41, 42, 43, 44, 45, 46"
                   className="w-full border border-neutral-300 p-2 focus:border-black focus:outline-none"
                 />
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Virtual Studio Outfit Match</label>
-                <select
-                  value={productForm.virtualStudioLook}
-                  onChange={(e) => setProductForm({ ...productForm, virtualStudioLook: e.target.value })}
-                  className="w-full border border-neutral-300 p-2 bg-white focus:border-black focus:outline-none"
-                >
-                  <option value="">Not linked to a studio outfit</option>
-                  {['Denim Maxi', 'Cloud Set', 'Library Knit', 'Lilac Run', 'Satin Night', 'Night Suit', 'Sage Slip', 'Bomber Cargo'].map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-[11px] text-neutral-500">
-                  Select the model outfit that shows this exact product photo below the model and in My collection.
-                </p>
               </div>
 
               <div>
