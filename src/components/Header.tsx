@@ -119,6 +119,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             LADIES 3D TOPS
           </a>
+
+          <a
+            href="#virtual-studio"
+            onClick={(e) => {
+              e.preventDefault();
+              scrollTo('virtual-studio');
+            }}
+            className="hover:text-[#16191f] transition-colors cursor-pointer whitespace-nowrap"
+          >
+            WESTERN WEAR 3D
+          </a>
+
         </nav>
 
         {/* Right: Only Shopping Cart (Admin button removed as requested) */}
@@ -148,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Mobile Bar: Clean Tap Pills */}
       <nav
         aria-label="Mobile Navigation"
-        className="flex sm:hidden items-center justify-between gap-1 mt-2.5 pt-2 border-t border-[#f0f3f7] font-['Michroma'] uppercase text-[8px] tracking-[0.08em] text-[#717b88] overflow-x-auto no-scrollbar"
+        className="flex sm:hidden items-center justify-start gap-1 mt-2.5 pt-2 border-t border-[#f0f3f7] font-['Michroma'] uppercase text-[8px] tracking-[0.08em] text-[#717b88] overflow-x-auto no-scrollbar"
       >
         <a
           href="#root"
@@ -199,6 +211,16 @@ export const Header: React.FC<HeaderProps> = ({
           className="px-2 py-1 rounded bg-[#f3f6fa] hover:text-[#16191f] text-center whitespace-nowrap"
         >
           3D TOPS
+        </a>
+        <a
+          href="#virtual-studio"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollTo('virtual-studio');
+          }}
+          className="px-2 py-1 rounded bg-[#f3f6fa] hover:text-[#16191f] text-center whitespace-nowrap"
+        >
+          WESTERN 3D
         </a>
       </nav>
     </header>
