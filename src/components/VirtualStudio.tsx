@@ -76,7 +76,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
     if (index === scene.look) return;
     const token = ++latestChange.current;
     const image = new Image();
-    image.src = LOOK_URLS[index];
+    image.src = looks[index].srcset1080 || looks[index].src640;
     const apply = () => {
       if (token !== latestChange.current) return;
       commitScene({ ...scene, look: index });
