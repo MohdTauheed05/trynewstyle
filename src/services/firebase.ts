@@ -120,6 +120,14 @@ export async function syncCatalogToFirestore(
   }
 
   try {
+    const oversizedRecord = [...products, ...looks].find((record) => new Blob([JSON.stringify(record)]).size > 900_000);
+    if (oversizedRecord) {
+      return {
+        success: false,
+        message: `Could not sync "${oversizedRecord.name}": its image or details exceed Firestore's document size limit. Use a smaller image and retry.`,
+      };
+    }
+
     // Sync products
     for (const prod of products) {
       await setDoc(doc(db, 'products', prod.id), {
