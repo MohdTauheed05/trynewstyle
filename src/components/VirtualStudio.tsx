@@ -60,7 +60,6 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
   const [scene, setScene] = useState<StudioState>(DEFAULT_STATE);
   const [history, setHistory] = useState<StudioState[]>([DEFAULT_STATE]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [category, setCategory] = useState('All');
   const [activePanel, setActivePanel] = useState<'looks' | 'collection'>('looks');
   const [favorites, setFavorites] = useState<number[]>([]);
   const [saved, setSaved] = useState<number[]>([]);
@@ -79,7 +78,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
     ...looks.filter((look) => look.modelGroup === 'western').map((look) => ({
       id: look.id,
       name: look.name,
-      category: 'Your models',
+      category: 'Western',
       image: look.srcset1080 || look.src640,
       productIds: look.productIds,
       isPreset: false,
@@ -154,9 +153,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
     });
   };
 
-  const categories = ['All', 'Everyday', 'Athletic', 'Sleep', 'Formal', 'Party', 'Street', 'Your models'];
-  const visibleLooks = studioLooks.map((look, index) => ({ ...look, index }))
-    .filter((look) => category === 'All' || look.category === category);
+  const visibleLooks = studioLooks.map((look, index) => ({ ...look, index }));
   const visibleProducts = products.filter((product) => product.image);
   const wornProducts = (currentLook.isPreset
     ? products.filter((product) => product.virtualStudioLook === currentLook.name)
@@ -238,13 +235,8 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             {activePanel === 'looks' ? (
               <>
                 <div className="vs-panel-title">
-                  <div><span className="vs-eyebrow">THE EDIT</span><h2>Outfits</h2></div>
+                  <div><span className="vs-eyebrow">CHOOSE A MODEL</span><h2>Models</h2></div>
                   <span>{visibleLooks.length} looks</span>
-                </div>
-                <div className="vs-categories">
-                  {categories.map((item) => (
-                    <button key={item} type="button" className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>
-                  ))}
                 </div>
                 <div className="vs-look-grid">
                   {visibleLooks.map((look) => (
@@ -263,10 +255,6 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                       >{favorites.includes(look.index) ? '♥' : '♡'}</button>
                     </article>
                   ))}
-                </div>
-                <div className="vs-selected-description">
-                  <strong>{currentLook.name}</strong>
-                  <span>Choose a Western female look. Match products from Clothes Inventory to show them below.</span>
                 </div>
               </>
             ) : (
