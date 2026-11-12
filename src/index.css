@@ -2965,7 +2965,7 @@ button:focus-visible, a:focus-visible {
   .vs-stage {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(330px, 36%);
-    grid-template-rows: minmax(300px, 47svh) minmax(190px, auto) auto;
+    grid-template-rows: minmax(300px, 42svh) minmax(170px, auto) auto;
     align-items: stretch;
     gap: 10px 14px;
     min-height: 0;
@@ -3018,8 +3018,8 @@ button:focus-visible, a:focus-visible {
     padding-bottom: 3px;
   }
   .vs-worn-card { flex: 0 0 145px; padding: 7px; }
-  .vs-worn-image { height: 92px; }
-  .vs-worn-copy { min-height: 52px; gap: 3px; padding: 6px 1px; }
+  .vs-worn-image { height: 82px; }
+  .vs-worn-copy { min-height: 44px; gap: 3px; padding: 5px 1px; }
   .vs-worn-copy strong { font-size: 11px; }
   .vs-worn-copy > span { font-size: 10px; }
   .vs-worn-copy small { font-size: 9px; }
