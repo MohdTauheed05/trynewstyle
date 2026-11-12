@@ -995,7 +995,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 : 'text-neutral-600 hover:text-black'
             }`}
           >
-            Runway Models ({looks.length})
+            Men’s Runway Models ({looks.length})
           </button>
           <button
             type="button"
@@ -1436,7 +1436,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="space-y-6">
             <div className="bg-white border border-[#e4e4e4] p-5 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold">Runway Models & Looks</h2>
+                <h2 className="text-base font-semibold">Men’s Runway Models & Looks</h2>
                 <p className="text-xs text-neutral-500 mt-0.5">
                   Upload model photographs, assign clothes to each look, and adjust the 3D ring sequence.
                 </p>
@@ -2396,7 +2396,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               {/* Model Cutout Image Upload */}
               <div className="border border-neutral-200 p-3 bg-neutral-50 space-y-2">
-                <label className="block font-semibold">Upload Model Photo for Western Wear 3D (Transparent PNG / WebP)</label>
+                <label className="block font-semibold">Upload Model Full-Body Photo (Transparent PNG / WebP)</label>
                 <input
                   type="file"
                   accept="image/*"
@@ -2423,7 +2423,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-14 h-24 object-contain bg-white border border-neutral-200"
                     />
                     <div className="text-[11px] text-neutral-500">
-                      This model appears in Western Wear 3D. Assign the exact clothes below so customers can add them to their bag.
+                      Model photo loaded. Transparent cutout recommended.
                     </div>
                   </div>
                 )}
