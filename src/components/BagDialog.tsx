@@ -116,6 +116,7 @@ export const BagDialog: React.FC<BagDialogProps> = ({
         quantity: item.quantity,
         price: item.price,
         ...(item.url ? { url: item.url } : {}),
+        ...(item.crop ? { crop: item.crop } : {}),
       })),
       total: subtotal,
       currencySymbol,
