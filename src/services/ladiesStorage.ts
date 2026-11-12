@@ -195,6 +195,12 @@ export function resetLadiesData(): { pieces: LadiesPiece[]; settings: LadiesSect
     localStorage.removeItem(STORAGE_KEY_LADIES_PIECES);
     localStorage.removeItem(STORAGE_KEY_LADIES_SETTINGS);
     window.dispatchEvent(new CustomEvent('runway:ladies_updated'));
+    void saveSharedSectionToFirestore('shared_ladies', {
+      pieces: DEFAULT_LADIES_PIECES,
+      settings: DEFAULT_LADIES_SETTINGS,
+    }).then((result) => {
+      if (!result.success) console.error(result.message);
+    });
   } catch (e) {
     console.error('Failed to reset ladies data', e);
   }
