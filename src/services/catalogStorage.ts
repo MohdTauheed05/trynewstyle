@@ -97,6 +97,12 @@ export function resetToDefaults(): { products: Product[]; looks: Look[] } {
     localStorage.removeItem('runway_products_v1');
     localStorage.removeItem('runway_looks_v1');
     window.dispatchEvent(new CustomEvent('runway:catalog_updated'));
+    void Promise.all([
+      syncCatalogCollectionToFirestore('products', DEFAULT_PRODUCTS),
+      syncCatalogCollectionToFirestore('looks', DEFAULT_LOOKS),
+    ]).then((results) => results.forEach((result) => {
+      if (!result.success) console.error(result.message);
+    }));
   } catch (e) {
     console.error('Failed to reset catalog', e);
   }
