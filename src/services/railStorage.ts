@@ -1,3 +1,4 @@
+import { saveSharedSectionToFirestore } from './firebase';
 export interface RailItem {
   id: string;
   name: string;
@@ -35,10 +36,15 @@ export function getStoredRailItems(): RailItem[] {
   return DEFAULT_RAIL_ITEMS;
 }
 
-export function saveRailItems(items: RailItem[]): void {
+export function saveRailItems(items: RailItem[], persistCloud = true): void {
   try {
     localStorage.setItem(STORAGE_KEY_RAIL, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent('runway:rail_updated'));
+    if (persistCloud) {
+      void saveSharedSectionToFirestore('shared_rail', { items }).then((result) => {
+        if (!result.success) console.error(result.message);
+      });
+    }
   } catch (e) {
     console.error('Failed to save rail items to storage', e);
   }
