@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Look, Product, LadiesPiece } from '../types';
 import { addBagItem } from '../services/bagStorage';
 import { formatCurrency } from '../services/storeSettings';
@@ -10,7 +10,7 @@ type Entry = { id: string; name: string; image: string; group: 'men' | 'women'; 
 export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products, shopName, currencySymbol }) => {
   const [ladiesPieces, setLadiesPieces] = useState(() => getStoredLadiesPieces());
   const [firstLadiesLook, setFirstLadiesLook] = useState(() => getStoredLadiesSettings().firstLookNumber || 15);
-  const [group, setGroup] = useState<'men' | 'women'>('men');
+  const wheelLock = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -37,13 +37,27 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         crop: [x0, x1, LADIES_MODEL_Y0, LADIES_MODEL_Y1] as [number, number, number, number],
       };
     });
-    return [...modelEntries, ...depthEntries];
+    const men = modelEntries.filter((entry) => entry.group === 'men');
+    const women = [...modelEntries.filter((entry) => entry.group === 'women'), ...depthEntries];
+    const alternating: Entry[] = [];
+    for (let index = 0; index < Math.max(men.length, women.length); index += 1) {
+      if (men[index]) alternating.push(men[index]);
+      if (women[index]) alternating.push(women[index]);
+    }
+    return alternating;
   }, [looks, products, ladiesPieces, firstLadiesLook]);
 
-  const ringEntries = entries.filter((entry) => entry.group === group);
+  const ringEntries = entries;
   const selectedIndex = ringEntries.length ? ((activeIndex % ringEntries.length) + ringEntries.length) % ringEntries.length : 0;
   const active = ringEntries[selectedIndex];
-  useEffect(() => { setActiveIndex(0); }, [group]);
+  const handleWheel = (event: React.WheelEvent<HTMLElement>) => {
+    const now = Date.now();
+    if (now - wheelLock.current < 280 || !ringEntries.length) return;
+    const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+    if (Math.abs(delta) < 14) return;
+    wheelLock.current = now;
+    setActiveIndex((current) => (current + (delta > 0 ? 1 : -1) + ringEntries.length) % ringEntries.length);
+  };
 
   const addProduct = (product: Product) => addBagItem({
     productId: product.id, name: product.name, size: product.sizes?.[0] || 'One Size',
@@ -89,12 +103,11 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   ) : <img src={entry.image} alt={label ? entry.name : ''} draggable={false} loading="lazy" />;
 
   return (
-    <section className="circle-lookbook" aria-label="Circle runway lookbook">
+    <section className="circle-lookbook" aria-label="Circle runway lookbook" onWheel={handleWheel}>
       <style>{`
         .circle-lookbook{--ink:#151515;--muted:#757575;position:relative;isolation:isolate;height:100svh;min-height:620px;max-height:1000px;overflow:hidden;background:#fff;color:var(--ink);padding:0 24px}
         .circle-lookbook *{box-sizing:border-box}.cl-top{height:58px;position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e6e6e6;font:10px/1 Arial,sans-serif;letter-spacing:.13em}
-        .cl-brand{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;letter-spacing:-.04em}.cl-brand sup{font-size:8px}.cl-signal,.cl-top-right{display:flex;align-items:center;gap:12px}.cl-signal{color:#777}.cl-tabs{display:flex;gap:5px}
-        .cl-tabs button{border:1px dashed #222;border-radius:99px;background:#fff;padding:8px 13px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}.cl-tabs button[aria-pressed=true]{background:#111;color:#fff;border-style:solid}
+        .cl-brand{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;letter-spacing:-.04em}.cl-brand sup{font-size:8px}.cl-signal,.cl-top-right{display:flex;align-items:center;gap:12px}.cl-signal{color:#777}
         .cl-stage{position:absolute;inset:58px 0 132px;overflow:hidden}.cl-ring{position:absolute;left:50%;top:55%;width:min(76vw,880px);height:min(57vh,460px);transform:translate(-50%,-50%);border:1px dashed #e3e3e3;border-radius:50%;pointer-events:none}
         .cl-center-title{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);font:400 clamp(30px,4.2vw,58px)/.88 Georgia,serif;letter-spacing:-.04em;text-align:center;white-space:nowrap;z-index:0}
         .cl-subtitle{font:10px Arial,sans-serif;letter-spacing:.08em;color:#888;margin-top:12px;line-height:1.4}
@@ -119,13 +132,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
       <div className="cl-top">
         <span className="cl-signal"><span aria-hidden="true">▮▮</span> LOW SIGNAL</span>
         <span className="cl-brand">TRY THE LOOK<sup>®</sup></span>
-        <div className="cl-top-right">
-          <span className="cl-kicker">{ringEntries.length} looks</span>
-          <div className="cl-tabs" role="group" aria-label="Choose model category">
-            <button type="button" aria-pressed={group === 'men'} onClick={() => { setGroup('men'); setActiveIndex(0); }}>Men</button>
-            <button type="button" aria-pressed={group === 'women'} onClick={() => { setGroup('women'); setActiveIndex(0); }}>Women</button>
-          </div>
-        </div>
+        <div className="cl-top-right"><span className="cl-kicker">{ringEntries.length} looks · scroll to explore</span></div>
       </div>
       {active ? <>
         <div className="cl-stage">
