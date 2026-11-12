@@ -20,6 +20,8 @@ export interface Product {
   url: string;
   tag?: string; // e.g. "New"
   category?: 'shoes' | 'top' | 'hoodie' | 'sweatshirt' | 'pants' | 'accessory';
+  /** Studio outfit name this product is worn with; used by the virtual studio shop-the-look row. */
+  virtualStudioLook?: string;
   fitDescription?: string; // e.g. "Relaxed boxy cut with ribbed collar"
   defaultPinX?: number; // percentage 0-100
   defaultPinY?: number; // percentage 0-100
