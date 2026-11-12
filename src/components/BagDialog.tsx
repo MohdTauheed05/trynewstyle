@@ -80,24 +80,25 @@ export const BagDialog: React.FC<BagDialogProps> = ({
 
     const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
     const snapshot = items.map((i) => ({ ...i }));
-    const shareItems = snapshot.map(({ id, name, size, quantity, price, image, url }) => ({
-      id: String(id),
-      name,
-      size,
-      quantity,
-      price,
-      image: (image.startsWith('https://') || image.startsWith('http://')) ? image : '',
-      url,
-    }));
+    // Keep the share URL compact: send only a minimal order snapshot. Product
+    // photos are resolved from the shared catalog on the order page instead.
     const shareData = {
-      orderId,
-      date: new Date().toISOString(),
-      shopName,
-      items: shareItems,
-      total: subtotal,
-      currencySymbol,
+      v: 1,
+      o: orderId,
+      d: Date.now(),
+      s: shopName,
+      i: snapshot.map(({ id, name, size, quantity, price, url }) => [
+        String(id), name, size, quantity, price, url,
+      ]),
+      t: subtotal,
+      c: currencySymbol,
     };
-    const orderUrl = `${window.location.origin}${window.location.pathname}#order=${encodeURIComponent(JSON.stringify(shareData))}`;
+    const bytes = new TextEncoder().encode(JSON.stringify(shareData));
+    const base64 = btoa(String.fromCharCode(...bytes))
+      .replace(/\\+/g, '-')
+      .replace(/\\//g, '_')
+      .replace(/=+$/g, '');
+    const orderUrl = `${window.location.origin}${window.location.pathname}#order=v1.${base64}`;
 
     // Log a product snapshot, including photo and product page URL, to Firestore.
     saveOrderToFirestore({
