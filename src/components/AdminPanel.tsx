@@ -2375,7 +2375,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               {/* Model Cutout Image Upload */}
               <div className="border border-neutral-200 p-3 bg-neutral-50 space-y-2">
-                <label className="block font-semibold">Upload Model Full-Body Photo (Transparent PNG / WebP)</label>
+                <label className="block font-semibold">Upload Model Photo for Western Wear 3D (Transparent PNG / WebP)</label>
                 <input
                   type="file"
                   accept="image/*"
@@ -2402,7 +2402,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-14 h-24 object-contain bg-white border border-neutral-200"
                     />
                     <div className="text-[11px] text-neutral-500">
-                      Model photo loaded. Transparent cutout recommended.
+                      This model appears in Western Wear 3D. Assign the exact clothes below so customers can add them to their bag.
                     </div>
                   </div>
                 )}
