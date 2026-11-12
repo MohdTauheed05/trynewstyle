@@ -95,8 +95,8 @@ export const BagDialog: React.FC<BagDialogProps> = ({
     };
     const bytes = new TextEncoder().encode(JSON.stringify(shareData));
     const base64 = btoa(String.fromCharCode(...bytes))
-      .replace(/\\+/g, '-')
-      .replace(/\\//g, '_')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
       .replace(/=+$/g, '');
     const orderUrl = `${window.location.origin}${window.location.pathname}#order=v1.${base64}`;
 
