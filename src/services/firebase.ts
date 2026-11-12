@@ -16,6 +16,7 @@ import {
   doc,
   getDocs,
   setDoc,
+  deleteDoc,
   getDocFromServer,
   getDoc,
   serverTimestamp,
@@ -190,6 +191,70 @@ export async function fetchCatalogFromFirestore(): Promise<{
   }
 }
 
+
+/**
+ * Shared storefront sections use settings documents so all devices read the same data.
+ * Writes require the signed-in Firebase store admin; reads follow the public settings rule.
+ */
+export async function saveSharedSectionToFirestore(
+  sectionId: string,
+  data: Record<string, unknown>
+): Promise<{ success: boolean; message: string }> {
+  const { app, db } = getFirebaseInstance();
+  if (!app || !db) return { success: false, message: 'Firebase is not configured.' };
+  if (!getAuth(app).currentUser) return { success: false, message: 'Sign in as the store admin before saving shared catalog data.' };
+  try {
+    const serialized = JSON.stringify(data);
+    if (new Blob([serialized]).size > 900_000) {
+      return { success: false, message: 'This section is too large for Firestore. Reduce uploaded image sizes and try again.' };
+    }
+    await setDoc(doc(db, 'settings', sectionId), { ...data, updatedAt: serverTimestamp() });
+    return { success: true, message: 'Shared section saved.' };
+  } catch (error: any) {
+    console.error('Failed to save shared section:', sectionId, error);
+    return { success: false, message: error?.message || 'Could not save shared section.' };
+  }
+}
+
+export async function fetchSharedSectionFromFirestore<T> (sectionId: string): Promise<T | null> {
+  const { db } = getFirebaseInstance();
+  if (!db) return null;
+  try {
+    const snap = await getDoc(doc(db, 'settings', sectionId));
+    return snap.exists() ? snap.data() as T : null;
+  } catch (error) {
+    console.error('Failed to fetch shared section:', sectionId, error);
+    return null;
+  }
+}
+
+/** Keep a Firestore collection in step with the admin's current catalog. */
+export async function syncCatalogCollectionToFirestore<T extends { id: string }>(
+  name: 'products' | 'looks',
+  rows: T[]
+): Promise<{ success: boolean; message: string }> {
+  const { app, db } = getFirebaseInstance();
+  if (!app || !db) return { success: false, message: 'Firebase is not configured.' };
+  if (!getAuth(app).currentUser) return { success: false, message: 'Sign in as the store admin before saving the catalog.' };
+  try {
+    const existing = await getDocs(collection(db, name));
+    const ids = new Set(rows.map((row) => row.id));
+    for (const row of rows) {
+      const serialized = JSON.stringify(row);
+      if (new Blob([serialized]).size > 900_000) {
+        return { success: false, message: 'A product photo is too large for Firestore. Use a smaller image and save again.' };
+      }
+      await setDoc(doc(db, name, row.id), { ...row, updatedAt: serverTimestamp() });
+    }
+    for (const item of existing.docs) {
+      if (!ids.has(item.id)) await deleteDoc(item.ref);
+    }
+    return { success: true, message: `Saved ${rows.length} ${name} to Firebase.` };
+  } catch (error: any) {
+    console.error(`Failed to sync ${name} to Firestore:`, error);
+    return { success: false, message: error?.message || `Failed to save ${name}.` };
+  }
+}
 
 export async function signInStoreAdmin(email: string, password: string): Promise<{ success: boolean; message: string }> {
   const { app } = getFirebaseInstance();
