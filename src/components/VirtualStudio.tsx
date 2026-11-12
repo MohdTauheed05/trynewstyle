@@ -173,6 +173,35 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             <div className="vs-scan-line" aria-hidden="true" />
           </div>
 
+        <section className="vs-worn-section" aria-labelledby="vs-worn-title">
+          <div className="vs-worn-heading">
+            <div>
+              <span className="vs-eyebrow">SHOP THE MODEL</span>
+              <h2 id="vs-worn-title">Worn in {currentLook.name}</h2>
+            </div>
+            <span>{wornProducts.length} {wornProducts.length === 1 ? 'piece' : 'pieces'}</span>
+          </div>
+          {wornProducts.length ? (
+            <div className="vs-worn-products">
+              {wornProducts.map((product) => (
+                <article className="vs-worn-card" key={product.id}>
+                  <div className="vs-worn-image"><img src={product.image} alt={product.name + ' product photo'} loading="lazy" /></div>
+                  <div className="vs-worn-copy">
+                    <strong>{product.name}</strong>
+                    <span>{formatCurrency(product.price, currencySymbol)}</span>
+                    {product.fitDescription && <small>{product.fitDescription}</small>}
+                  </div>
+                  <button type="button" onClick={() => addProduct(product)}>Add to bag</button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="vs-worn-empty">
+              No products are matched to this Western look yet. In Admin → Clothes Inventory, edit each product and choose “{currentLook.name}” under Western Wear 3D Look Match.
+            </p>
+          )}
+        </section>
+
           <aside className="vs-panel">
             {activePanel === 'looks' ? (
               <>
@@ -273,34 +302,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             }}>{saved.includes(scene.look) ? '✓ Saved' : '☆ Save look'}</button>
           </div>
         </div>
-        <section className="vs-worn-section" aria-labelledby="vs-worn-title">
-          <div className="vs-worn-heading">
-            <div>
-              <span className="vs-eyebrow">SHOP THE MODEL</span>
-              <h2 id="vs-worn-title">Worn in {currentLook.name}</h2>
-            </div>
-            <span>{wornProducts.length} {wornProducts.length === 1 ? 'piece' : 'pieces'}</span>
-          </div>
-          {wornProducts.length ? (
-            <div className="vs-worn-products">
-              {wornProducts.map((product) => (
-                <article className="vs-worn-card" key={product.id}>
-                  <div className="vs-worn-image"><img src={product.image} alt={product.name + ' product photo'} loading="lazy" /></div>
-                  <div className="vs-worn-copy">
-                    <strong>{product.name}</strong>
-                    <span>{formatCurrency(product.price, currencySymbol)}</span>
-                    {product.fitDescription && <small>{product.fitDescription}</small>}
-                  </div>
-                  <button type="button" onClick={() => addProduct(product)}>Add to bag</button>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="vs-worn-empty">
-              No products are matched to this Western look yet. In Admin → Clothes Inventory, edit each product and choose “{currentLook.name}” under Western Wear 3D Look Match.
-            </p>
-          )}
-        </section>
+
         <p className="vs-photo-note">Western female models stay separate from the Men’s Runway Models and Ladies Collection.</p>
       </div>
 
