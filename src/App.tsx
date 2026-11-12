@@ -210,6 +210,14 @@ export default function App() {
         return {
           ...item,
           image: item.image || product?.image || railItem?.image || ladiesPiece?.customImage || ladiesRailItem?.image,
+          crop: item.crop || (ladiesPiece?.box ? {
+            x: ladiesPiece.box[0],
+            y: ladiesPiece.box[2],
+            w: ladiesPiece.box[1] - ladiesPiece.box[0],
+            h: ladiesPiece.box[3] - ladiesPiece.box[2],
+            sheetW: 960,
+            sheetH: 720,
+          } : undefined),
         };
       }),
     };
