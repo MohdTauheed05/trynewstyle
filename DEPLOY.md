@@ -28,5 +28,5 @@ Option B (CLI): `npm i -g vercel && vercel --prod`
 
 ## 4. After going live
 - Open `/#admin` and sign in with the Firebase Auth admin email and password.
-- In Admin -> Store Settings, save the WhatsApp number. The app writes it to Firestore; all shoppers load the shared number automatically. If the Firebase login or role setup is missing, Admin will say the settings were saved only on that device.
+- In Admin -> Shop Settings, save the WhatsApp number. The app writes it to Firestore; all shoppers load the shared number automatically. If the Firebase login or role setup is missing, Admin will say the settings were saved only on that device.
 - In Admin -> Shop Settings -> Firebase Admin Login, enter the current Firebase password and the new password to change it in Firebase Auth. To change the login email, enter the new email and confirm the verification email Firebase sends.
