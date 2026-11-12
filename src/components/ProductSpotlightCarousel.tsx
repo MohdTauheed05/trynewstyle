@@ -35,6 +35,9 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
+  const copyRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const hoveredRef = useRef(false);
+  const pauseUntilRef = useRef(0);
   const dragRef = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
 
   useEffect(() => {
@@ -109,13 +112,14 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
       const rect = card.getBoundingClientRect();
       const relative = (rect.left + rect.width / 2 - center) / (bounds.width / 2 + rect.width / 2);
       const d = Math.min(1, Math.abs(relative));
-      const height = window.innerWidth <= 820 ? 202 + 46 * Math.pow(d, 2.6) : 280 + 92 * Math.pow(d, 2.6);
-      const width = window.innerWidth <= 820 ? 126 + 20 * d * d : 170 + 48 * d * d;
+      const mobile = window.innerWidth <= 820;
+      const baseHeight = mobile ? 202 : 280;
+      const baseWidth = mobile ? 126 : 170;
+      const height = mobile ? 202 + 46 * Math.pow(d, 2.6) : 280 + 92 * Math.pow(d, 2.6);
+      const width = mobile ? 126 + 20 * d * d : 170 + 48 * d * d;
       const tilt = relative * (window.innerWidth <= 820 ? 8 : 12);
       const lift = -12 * d * d;
-      card.style.height = height.toFixed(1) + 'px';
-      card.style.width = width.toFixed(1) + 'px';
-      card.style.transform = 'translateY(' + lift.toFixed(1) + 'px) perspective(900px) rotateY(' + tilt.toFixed(1) + 'deg)';
+      card.style.transform = 'translateY(' + lift.toFixed(1) + 'px) scale(' + (width / baseWidth).toFixed(3) + ',' + (height / baseHeight).toFixed(3) + ') perspective(900px) rotateY(' + tilt.toFixed(1) + 'deg)';
     });
   };
 
@@ -123,10 +127,25 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
     updateCurve();
     const viewport = viewportRef.current;
     if (!viewport) return;
+    const positionMiddleCopy = () => {
+      const cycleWidth = copyRefs.current[0]?.offsetWidth || 0;
+      if (cycleWidth > 0) viewport.scrollLeft = cycleWidth;
+      updateCurve();
+    };
+    const setupFrame = requestAnimationFrame(positionMiddleCopy);
     const resize = new ResizeObserver(updateCurve);
     resize.observe(viewport);
-    return () => resize.disconnect();
+    return () => { cancelAnimationFrame(setupFrame); resize.disconnect(); };
   }, [allProducts.length]);
+
+  const handleScroll = () => {
+    const viewport = viewportRef.current;
+    const cycleWidth = copyRefs.current[0]?.offsetWidth || 0;
+    if (!viewport || cycleWidth <= 0) { updateCurve(); return; }
+    if (viewport.scrollLeft < cycleWidth * 0.25) viewport.scrollLeft += cycleWidth;
+    else if (viewport.scrollLeft > cycleWidth * 2.25) viewport.scrollLeft -= cycleWidth;
+    updateCurve();
+  };
 
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     const viewport = viewportRef.current;
@@ -134,10 +153,12 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
     const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
     if (!horizontal) return;
     event.preventDefault();
+    pauseUntilRef.current = Date.now() + 1000;
     viewport.scrollLeft += horizontal;
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    pauseUntilRef.current = Date.now() + 1400;
     if (event.pointerType === 'touch' || (event.target as HTMLElement).closest('button,a')) return;
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -150,6 +171,7 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
     const viewport = viewportRef.current;
     if (!drag.active || !viewport) return;
     const dx = event.clientX - drag.startX;
+    pauseUntilRef.current = Date.now() + 1200;
     if (Math.abs(dx) > 4) drag.moved = true;
     viewport.scrollLeft = drag.startScroll - dx;
   };
@@ -157,6 +179,7 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
     const viewport = viewportRef.current;
     if (viewport?.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId);
     dragRef.current.active = false;
+    pauseUntilRef.current = Date.now() + 1100;
     setIsDragging(false);
   };
   const openDetails = (product: SpotlightProduct) => {
@@ -164,8 +187,26 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
       dragRef.current.moved = false;
       return;
     }
+    pauseUntilRef.current = Date.now() + 2400;
     setSelected(product);
   };
+
+  useEffect(() => {
+    let frame = 0;
+    let last = performance.now();
+    const animate = (now: number) => {
+      const elapsed = Math.min(50, now - last);
+      last = now;
+      const viewport = viewportRef.current;
+      if (viewport && !selected && !dragRef.current.active && !hoveredRef.current && Date.now() > pauseUntilRef.current) {
+        const speed = window.innerWidth <= 820 ? 22 : 34;
+        viewport.scrollLeft += speed * elapsed / 1000;
+      }
+      frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [selected, allProducts.length]);
 
   useEffect(() => {
     if (!selected) return;
@@ -209,10 +250,10 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
         .rm-count{align-self:end;color:var(--rm-green);font:11px Inter,Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase;padding-bottom:5px}
         .rm-track-window{width:100%;height:390px;overflow-x:auto;overflow-y:hidden;padding:28px 3vw 22px;cursor:grab;scrollbar-width:none;overscroll-behavior-x:contain;touch-action:pan-x;perspective:1200px}
         .rm-track-window::-webkit-scrollbar{display:none}.rm-track-window.is-dragging{cursor:grabbing;user-select:none}
-        .rm-track{display:flex;align-items:center;gap:18px;width:max-content;min-width:100%;height:100%;padding-right:3vw}
-        .reel-product-card{flex:none;height:250px;width:170px;background:#fff;border-radius:14px;padding:9px;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(8,72,45,.13);transform-origin:center center;transition:box-shadow .25s,filter .25s;will-change:height,width,transform}
+        .rm-track{display:flex;align-items:center;gap:0;width:max-content;min-width:100%;height:100%}.rm-loop-copy{display:flex;align-items:center;gap:18px;width:max-content;height:100%;padding-right:18px;flex:none}
+        .reel-product-card{flex:none;height:280px;width:170px;background:#fff;border-radius:14px;padding:9px;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(8,72,45,.13);transform-origin:center center;transition:box-shadow .25s,filter .25s;will-change:height,width,transform}
         .reel-product-card:hover{box-shadow:0 12px 32px rgba(8,72,45,.16);filter:saturate(1.03);z-index:3}
-        .reel-product-image{height:61%;min-height:0;position:relative;display:grid;place-items:center;overflow:hidden;border-radius:9px;background:#f4f6f0;color:#888}
+        .reel-product-image{height:61%;width:100%;min-height:0;position:relative;display:grid;place-items:center;overflow:hidden;border:0;padding:0;cursor:pointer;border-radius:9px;background:#f4f6f0;color:#888}
         .reel-product-image img,.reel-product-image svg{width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply}
         .reel-product-number{position:absolute;left:8px;top:8px;border-radius:99px;background:rgba(255,255,255,.9);padding:5px 8px;color:var(--rm-green);font:10px Inter,Arial,sans-serif;letter-spacing:.08em}
         .reel-product-info{display:flex;justify-content:space-between;align-items:center;gap:7px;padding:9px 1px 6px}
@@ -236,7 +277,7 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
           .reelmark-products{padding:42px 0 42px}.rm-heading{width:calc(100% - 32px);grid-template-columns:1fr;gap:12px;margin-bottom:8px}
           .rm-heading h2{font-size:clamp(36px,10vw,54px);max-width:520px}.rm-heading p{font-size:13px;margin-top:8px}.rm-count{padding:0}
           .rm-track-window{height:318px;padding:16px 16px 14px}
-          .rm-track{gap:12px;padding-right:16px}
+          .rm-track{gap:0}.rm-loop-copy{gap:12px;padding-right:12px}
           .reel-product-card{height:202px;width:126px;padding:7px;border-radius:12px}
           .reel-product-image{height:57%}.reel-product-info{padding:7px 1px 5px}.reel-product-copy h3{font-size:10px}.reel-product-copy p{font-size:10px}
           .reel-product-info button{width:27px;height:27px}.reel-product-details{font-size:9px}
@@ -259,7 +300,12 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
           className={'rm-track-window' + (isDragging ? ' is-dragging' : '')}
           aria-label="All shop products"
           ref={viewportRef}
-          onScroll={updateCurve}
+          onScroll={handleScroll}
+          onMouseEnter={() => { hoveredRef.current = true; }}
+          onMouseLeave={() => { hoveredRef.current = false; }}
+          onTouchStart={() => { pauseUntilRef.current = Date.now() + 1400; }}
+          onTouchMove={() => { pauseUntilRef.current = Date.now() + 1400; }}
+          onTouchEnd={() => { pauseUntilRef.current = Date.now() + 1100; }}
           onWheel={handleWheel}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -267,21 +313,34 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
           onPointerCancel={handlePointerEnd}
         >
           <div className="rm-track">
-            {allProducts.map((product, index) => (
-              <article className="reel-product-card" key={product.source + '-' + product.id} ref={(element) => { cardRefs.current[index] = element; }}>
-                <button type="button" className="reel-product-image" onClick={() => openDetails(product)} aria-label={'View ' + product.name}>
-                  {renderProductPhoto(product, 'reel-card-photo')}
-                  <span className="reel-product-number">{String(index + 1).padStart(2, '0')}</span>
-                </button>
-                <div className="reel-product-info">
-                  <div className="reel-product-copy">
-                    <h3>{product.name}</h3>
-                    <p>{formatCurrency(product.price, currencySymbol)}</p>
-                  </div>
-                  <button type="button" onClick={() => addProduct(product)} aria-label={'Add ' + product.name + ' to bag'}>+</button>
-                </div>
-                <button type="button" className="reel-product-details" onClick={() => openDetails(product)}>View product <span aria-hidden="true">↗</span></button>
-              </article>
+            {[0, 1, 2].map((copy) => (
+              <div
+                className="rm-loop-copy"
+                key={'copy-' + copy}
+                aria-hidden={copy !== 1}
+                ref={(element) => { copyRefs.current[copy] = element; }}
+              >
+                {allProducts.map((product, index) => {
+                  const tabIndex = copy === 1 ? 0 : -1;
+                  const cardIndex = copy * allProducts.length + index;
+                  return (
+                    <article className="reel-product-card" key={product.source + '-' + product.id + '-' + copy} ref={(element) => { cardRefs.current[cardIndex] = element; }}>
+                      <button type="button" className="reel-product-image" tabIndex={tabIndex} onClick={() => openDetails(product)} aria-label={'View ' + product.name}>
+                        {renderProductPhoto(product, 'reel-card-photo')}
+                        <span className="reel-product-number">{String(index + 1).padStart(2, '0')}</span>
+                      </button>
+                      <div className="reel-product-info">
+                        <div className="reel-product-copy">
+                          <h3>{product.name}</h3>
+                          <p>{formatCurrency(product.price, currencySymbol)}</p>
+                        </div>
+                        <button type="button" tabIndex={tabIndex} onClick={() => addProduct(product)} aria-label={'Add ' + product.name + ' to bag'}>+</button>
+                      </div>
+                      <button type="button" className="reel-product-details" tabIndex={tabIndex} onClick={() => openDetails(product)}>View product <span aria-hidden="true">↗</span></button>
+                    </article>
+                  );
+                })}
+              </div>
             ))}
           </div>
         </div>
