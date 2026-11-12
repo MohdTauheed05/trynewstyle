@@ -2242,17 +2242,21 @@ button:focus-visible, a:focus-visible {
 @media (max-width: 820px) {
   .ll-root {
     --u: 1px;
-    height: auto;
-    min-height: 100vh;
+    height: calc(100svh - var(--header-h, 64px));
+    min-height: 520px;
+    overflow: hidden;
   }
   .ll-root main {
+    height: 100%;
+    min-height: 0;
+    flex: 1 1 0%;
     grid-template-columns: 1fr !important;
-    grid-template-rows: 1fr 190px !important;
+    grid-template-rows: minmax(0, 1fr) 190px !important;
   }
   .ll-root .stage {
     cursor: auto !important;
-    height: calc(100vh - 240px) !important;
-    min-height: 380px !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
   .ll-root .m {
     cursor: auto !important;
