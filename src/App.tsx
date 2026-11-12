@@ -11,7 +11,7 @@ import { Look, Product } from './types';
 import { getStoredLooks, getStoredProducts, saveLooks, saveProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
 import { getStoredSettings, saveStoredSettings, StoreSettings, cleanCurrencySymbol } from './services/storeSettings';
-import { fetchCatalogFromFirestore, fetchSharedSectionFromFirestore, fetchStoreSettingsFromFirestore } from './services/firebase';
+import { fetchCatalogFromFirestore, fetchOrderShareFromFirestore, fetchSharedSectionFromFirestore, fetchStoreSettingsFromFirestore } from './services/firebase';
 import { getStoredRailItems, saveRailItems } from './services/railStorage';
 import { getStoredLadiesPieces, getStoredLadiesSettings, saveLadiesPieces, saveLadiesSettings } from './services/ladiesStorage';
 import { getStoredLadiesRailItems, saveLadiesRailItems } from './services/ladiesRailStorage';
@@ -33,6 +33,27 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>(() => getStoredProducts());
   const [cartCount, setCartCount] = useState<number>(() => getBagCount());
   const [isBagOpen, setIsBagOpen] = useState(false);
+  const [linkedOrder, setLinkedOrder] = useState<any>(null);
+  const [isResolvingOrder, setIsResolvingOrder] = useState(() =>
+    typeof window !== 'undefined' && /^[A-Za-z0-9_-]{12}$/.test(window.location.hash.slice('#order='.length))
+  );
+
+  useEffect(() => {
+    const token = window.location.hash.startsWith('#order=')
+      ? window.location.hash.slice('#order='.length)
+      : '';
+    if (!/^[A-Za-z0-9_-]{12}$/.test(token)) return;
+    let active = true;
+    setIsResolvingOrder(true);
+    fetchOrderShareFromFirestore(token).then((order) => {
+      if (!active) return;
+      setLinkedOrder(order);
+      setIsResolvingOrder(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Sync with browser URL / hash changes
   useEffect(() => {
@@ -138,7 +159,9 @@ export default function App() {
   if (typeof window !== 'undefined' && window.location.hash.startsWith('#order=')) {
     try {
       const encodedOrder = window.location.hash.slice('#order='.length);
-      if (encodedOrder.startsWith('v1.')) {
+      if (/^[A-Za-z0-9_-]{12}$/.test(encodedOrder)) {
+        sharedOrder = linkedOrder;
+      } else if (encodedOrder.startsWith('v1.')) {
         const base64 = encodedOrder.slice(3).replace(/-/g, '+').replace(/_/g, '/');
         const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
         const bytes = Uint8Array.from(atob(paddedBase64), (char) => char.charCodeAt(0));
@@ -162,6 +185,13 @@ export default function App() {
     } catch {
       sharedOrder = null;
     }
+  }
+
+  if (!sharedOrder && isResolvingOrder) {
+    return <main className="min-h-screen grid place-items-center bg-[#f5f3ef] text-sm text-neutral-600">Loading order details…</main>;
+  }
+  if (!sharedOrder && /^[A-Za-z0-9_-]{12}$/.test(window.location.hash.slice('#order='.length))) {
+    return <main className="min-h-screen grid place-items-center bg-[#f5f3ef] px-6 text-center text-sm text-neutral-600">This order link could not be found. Please ask the store owner for a new link.</main>;
   }
 
   if (sharedOrder && Array.isArray(sharedOrder.items)) {
