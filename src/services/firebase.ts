@@ -204,7 +204,7 @@ export interface PublicOrderShare {
   orderId: string;
   date: string;
   shopName: string;
-  items: Array<{ id: string; name: string; size: string; quantity: number; price: number; url?: string }>;
+  items: Array<{ id: string; name: string; size: string; quantity: number; price: number; url?: string; crop?: { x: number; y: number; w: number; h: number; sheetW: number; sheetH: number } }>;
   total: number;
   currencySymbol: string;
 }
