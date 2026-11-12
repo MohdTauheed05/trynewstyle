@@ -112,17 +112,16 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
   }, [cameraOpen]);
 
   const commitScene = useCallback((next: StudioState) => {
+    const kept = history.slice(0, historyIndex + 1);
+    const last = kept[kept.length - 1];
     setScene(next);
-    setHistory((current) => {
-      const kept = current.slice(0, historyIndex + 1);
-      const last = kept[kept.length - 1];
-      if (last && last.look === next.look && last.filter === next.filter && last.realism === next.realism && last.frame === next.frame) return kept;
+    if (!last || last.look !== next.look || last.filter !== next.filter || last.realism !== next.realism || last.frame !== next.frame) {
       const updated = [...kept, next].slice(-30);
+      setHistory(updated);
       setHistoryIndex(updated.length - 1);
-      return updated;
-    });
+    }
     latestChange.current += 1;
-  }, [historyIndex]);
+  }, [history, historyIndex]);
 
   const chooseLook = (index: number) => {
     if (index === scene.look) return;
@@ -191,6 +190,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
       if (typeof reader.result === 'string') {
         setSelfie(reader.result);
         setPhotoMessage('Selfie saved on this device. Photo-based outfit generation needs an AI service.');
+        closeCamera();
       }
     };
     reader.readAsDataURL(file);
@@ -279,28 +279,20 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                 </div>
                 <div className="vs-look-grid">
                   {visibleLooks.map((look) => (
-                    <button key={look.index} type="button" className={'vs-look-card ' + (scene.look === look.index ? 'selected' : '')} onClick={() => chooseLook(look.index)}>
-                      <img src={studioImage(LOOKS[look.index].file, 360)} alt="" loading="lazy" />
-                      <span>{look.name}</span>
-                      <i>{look.category}</i>
-                      <b
+                    <article key={look.index} className={'vs-look-card ' + (scene.look === look.index ? 'selected' : '')}>
+                      <button type="button" className="vs-look-select" onClick={() => chooseLook(look.index)} aria-label={'Preview ' + look.name}>
+                        <img src={studioImage(LOOKS[look.index].file, 360)} alt="" loading="lazy" />
+                        <span>{look.name}</span>
+                        <i>{look.category}</i>
+                      </button>
+                      <button
+                        type="button"
                         className={favorites.includes(look.index) ? 'favorite on' : 'favorite'}
-                        role="button"
-                        tabIndex={0}
                         aria-label={favorites.includes(look.index) ? 'Remove favorite' : 'Add favorite'}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setFavorites((current) => current.includes(look.index) ? current.filter((id) => id !== look.index) : [...current, look.index]);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            setFavorites((current) => current.includes(look.index) ? current.filter((id) => id !== look.index) : [...current, look.index]);
-                          }
-                        }}
-                      >{favorites.includes(look.index) ? '♥' : '♡'}</b>
-                    </button>
+                        aria-pressed={favorites.includes(look.index)}
+                        onClick={() => setFavorites((current) => current.includes(look.index) ? current.filter((id) => id !== look.index) : [...current, look.index])}
+                      >{favorites.includes(look.index) ? '♥' : '♡'}</button>
+                    </article>
                   ))}
                 </div>
                 <div className="vs-selected-description">
