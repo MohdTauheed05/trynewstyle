@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Look, Product } from '../types';
 import { addBagItem } from '../services/bagStorage';
 import { formatCurrency } from '../services/storeSettings';
@@ -8,14 +8,6 @@ interface VirtualStudioProps {
   currencySymbol: string;
   products: Product[];
   looks: Look[];
-}
-
-type StudioFrame = 'full' | 'mid' | 'portrait';
-interface StudioState {
-  look: number;
-  filter: number;
-  realism: number;
-  frame: StudioFrame;
 }
 
 const CDN = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/';
@@ -43,27 +35,11 @@ interface StudioLook {
   isPreset: boolean;
 }
 
-const FILTERS = [
-  { name: 'Daylight', css: 'none' },
-  { name: 'Soft Film', css: 'contrast(.92) saturate(.85) brightness(1.06)' },
-  { name: 'Cool Studio', css: 'saturate(.9) brightness(1.06) contrast(1.04)' },
-  { name: 'Blue Hour', css: 'brightness(.82) contrast(1.1) saturate(1.1)' },
-  { name: 'Mono', css: 'grayscale(1) contrast(1.12) brightness(1.03)' },
-  { name: 'Golden Hour', css: 'saturate(1.1) brightness(1.02)' },
-];
-
-const DEFAULT_STATE: StudioState = { look: 0, filter: 0, realism: 75, frame: 'full' };
 const WESTERN_PRESET_URLS = WESTERN_PRESETS.map((look) => studioImage(look.file, 1000));
 const BG_URL = studioImage('hf_20261112_034551_6394b127-5366-40a8-9c82-3c416f1161f1.png', 2400);
 
 export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currencySymbol, products, looks }) => {
-  const [scene, setScene] = useState<StudioState>(DEFAULT_STATE);
-  const [history, setHistory] = useState<StudioState[]>([DEFAULT_STATE]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const [activePanel, setActivePanel] = useState<'looks' | 'collection'>('looks');
-  const [favorites, setFavorites] = useState<number[]>([]);
-  const [saved, setSaved] = useState<number[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedLookIndex, setSelectedLookIndex] = useState(0);
   const latestChange = useRef(0);
 
   const studioLooks: StudioLook[] = [
@@ -84,7 +60,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
       isPreset: false,
     })),
   ];
-  const currentLook = studioLooks[scene.look] || studioLooks[0];
+  const currentLook = studioLooks[selectedLookIndex] || studioLooks[0];
 
   useEffect(() => {
     const images = [...WESTERN_PRESET_URLS, ...looks.filter((look) => look.modelGroup === 'western').map((look) => look.src640)].map((src) => {
@@ -100,44 +76,16 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
     };
   }, [looks]);
 
-  const commitScene = useCallback((next: StudioState) => {
-    const kept = history.slice(0, historyIndex + 1);
-    const last = kept[kept.length - 1];
-    setScene(next);
-    if (!last || last.look !== next.look || last.filter !== next.filter || last.realism !== next.realism || last.frame !== next.frame) {
-      const updated = [...kept, next].slice(-30);
-      setHistory(updated);
-      setHistoryIndex(updated.length - 1);
-    }
-    latestChange.current += 1;
-  }, [history, historyIndex]);
-
   const chooseLook = (index: number) => {
-    if (index === scene.look) return;
+    if (index === selectedLookIndex) return;
     const token = ++latestChange.current;
     const image = new Image();
     image.src = studioLooks[index].image;
     const apply = () => {
-      if (token !== latestChange.current) return;
-      commitScene({ ...scene, look: index });
+      if (token === latestChange.current) setSelectedLookIndex(index);
     };
     if (image.complete) apply();
     else image.onload = apply;
-  };
-
-  const undo = () => {
-    if (historyIndex <= 0) return;
-    const nextIndex = historyIndex - 1;
-    setHistoryIndex(nextIndex);
-    setScene(history[nextIndex]);
-    latestChange.current += 1;
-  };
-  const redo = () => {
-    if (historyIndex >= history.length - 1) return;
-    const nextIndex = historyIndex + 1;
-    setHistoryIndex(nextIndex);
-    setScene(history[nextIndex]);
-    latestChange.current += 1;
   };
 
   const addProduct = (product: Product) => {
@@ -154,7 +102,6 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
   };
 
   const visibleLooks = studioLooks.map((look, index) => ({ ...look, index }));
-  const visibleProducts = products.filter((product) => product.image);
   const wornProducts = (currentLook.isPreset
     ? products.filter((product) => product.virtualStudioLook === currentLook.name)
     : currentLook.productIds.map((id) => products.find((product) => product.id === id)))
@@ -170,10 +117,6 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             <strong>{shopName}</strong>
             <span>VIRTUAL STYLING STUDIO</span>
           </div>
-          <div className="vs-tabs" aria-label="Studio views">
-            <button type="button" className={activePanel === 'looks' ? 'active' : ''} onClick={() => setActivePanel('looks')}>Looks</button>
-            <button type="button" className={activePanel === 'collection' ? 'active' : ''} onClick={() => setActivePanel('collection')}>My collection</button>
-          </div>
         </header>
 
         <div className="vs-stage">
@@ -188,7 +131,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             </div>
           </div>
 
-          <div className={'vs-model-frame ' + scene.frame} style={{ filter: FILTERS[scene.filter].css + ' saturate(' + (0.65 + scene.realism / 200) + ')' }}>
+          <div className="vs-model-frame">
             <img
               key={currentLook.id}
               className="vs-model-image"
@@ -232,98 +175,25 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
         </section>
 
           <aside className="vs-panel">
-            {activePanel === 'looks' ? (
-              <>
-                <div className="vs-panel-title">
-                  <div><span className="vs-eyebrow">CHOOSE A MODEL</span><h2>Models</h2></div>
-                  <span>{visibleLooks.length} looks</span>
-                </div>
-                <div className="vs-look-grid">
-                  {visibleLooks.map((look) => (
-                    <article key={look.index} className={'vs-look-card ' + (scene.look === look.index ? 'selected' : '')}>
-                      <button type="button" className="vs-look-select" onClick={() => chooseLook(look.index)} aria-label={'Preview ' + look.name}>
-                        <img src={look.image} alt="" loading="lazy" />
-                        <span>{look.name}</span>
-                        <i>{look.category}</i>
-                      </button>
-                      <button
-                        type="button"
-                        className={favorites.includes(look.index) ? 'favorite on' : 'favorite'}
-                        aria-label={favorites.includes(look.index) ? 'Remove favorite' : 'Add favorite'}
-                        aria-pressed={favorites.includes(look.index)}
-                        onClick={() => setFavorites((current) => current.includes(look.index) ? current.filter((id) => id !== look.index) : [...current, look.index])}
-                      >{favorites.includes(look.index) ? '♥' : '♡'}</button>
-                    </article>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="vs-panel-title">
-                  <div><span className="vs-eyebrow">YOUR SHOP</span><h2>My collection</h2></div>
-                  <span>{visibleProducts.length} pieces</span>
-                </div>
-                <p className="vs-collection-note">Items added in Admin → Clothes Inventory appear here, including accessories.</p>
-                <div className="vs-product-grid">
-                  {visibleProducts.length ? visibleProducts.map((product) => (
-                    <article className="vs-product-card" key={product.id}>
-                      <button type="button" className="vs-product-preview" onClick={() => setSelectedProduct(product)} aria-label={'Preview ' + product.name}>
-                        <img src={product.image} alt="" loading="lazy" />
-                      </button>
-                      <strong>{product.name}</strong>
-                      {studioLooks.filter((look) => look.isPreset ? product.virtualStudioLook === look.name : look.productIds.includes(product.id)).map((look) => <small className="vs-product-look-label" key={look.id}>Worn in {look.name}</small>)}
-                      <span>{formatCurrency(product.price, currencySymbol)}</span>
-                      <div className="vs-product-actions">
-                        <button type="button" onClick={() => setSelectedProduct(product)}>Details</button>
-                        <button type="button" onClick={() => addProduct(product)}>Add to bag</button>
-                      </div>
-                    </article>
-                  )) : (
-                    <div className="vs-empty-products">
-                      <strong>Your collection is waiting</strong>
-                      <span>Add clothes or accessories from the Admin panel. They’ll show here automatically.</span>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+            <div className="vs-panel-title">
+              <div><span className="vs-eyebrow">CHOOSE A MODEL</span><h2>Models</h2></div>
+              <span>{visibleLooks.length} looks</span>
+            </div>
+            <div className="vs-look-grid">
+              {visibleLooks.map((look) => (
+                <article key={look.index} className={'vs-look-card ' + (selectedLookIndex === look.index ? 'selected' : '')}>
+                  <button type="button" className="vs-look-select" onClick={() => chooseLook(look.index)} aria-label={'Preview ' + look.name}>
+                    <img src={look.image} alt="" loading="lazy" />
+                    <span>{look.name}</span>
+                    <i>{look.category}</i>
+                  </button>
+                </article>
+              ))}
+            </div>
+          </aside>  </aside>
 
-            {selectedProduct && activePanel === 'collection' && (
-              <div className="vs-product-detail">
-                <button type="button" className="vs-detail-close" onClick={() => setSelectedProduct(null)} aria-label="Close product details">×</button>
-                <img src={selectedProduct.image} alt={selectedProduct.name} />
-                <div>
-                  <span className="vs-eyebrow">{selectedProduct.category || 'PIECE'}</span>
-                  <strong>{selectedProduct.name}</strong>
-                  <span>{formatCurrency(selectedProduct.price, currencySymbol)}</span>
-                  <button type="button" onClick={() => addProduct(selectedProduct)}>Add to bag</button>
-                </div>
-              </div>
-            )}
-          </aside>
-
-          <div className="vs-bottom-controls">
-            <button type="button" onClick={undo} disabled={historyIndex <= 0}>↶ <span>Undo</span></button>
-            <button type="button" onClick={redo} disabled={historyIndex >= history.length - 1}>↷ <span>Redo</span></button>
-            <button type="button" onClick={() => {
-              const frames: StudioFrame[] = ['full', 'mid', 'portrait'];
-              const next = frames[(frames.indexOf(scene.frame) + 1) % frames.length];
-              commitScene({ ...scene, frame: next });
-            }}>◉ <span>{scene.frame === 'full' ? 'Full' : scene.frame === 'mid' ? 'Mid' : 'Portrait'}</span></button>
-            <button type="button" onClick={() => commitScene(DEFAULT_STATE)}>↺ <span>Reset</span></button>
-            <label className="vs-realism">
-              <span>Realism</span><input type="range" min="0" max="100" value={scene.realism} onChange={(event) => commitScene({ ...scene, realism: Number(event.target.value) })} /><b>{scene.realism}%</b>
-            </label>
-            <label className="vs-filter">
-              <span>Filter</span><select value={scene.filter} onChange={(event) => commitScene({ ...scene, filter: Number(event.target.value) })}>{FILTERS.map((item, index) => <option key={item.name} value={index}>{item.name}</option>)}</select>
-            </label>
-            <button type="button" className={saved.includes(scene.look) ? 'vs-save saved' : 'vs-save'} onClick={() => {
-              setSaved((current) => current.includes(scene.look) ? current : [...current, scene.look]);
-            }}>{saved.includes(scene.look) ? '✓ Saved' : '☆ Save look'}</button>
-          </div>
         </div>
 
-        <p className="vs-photo-note">Western female models stay separate from the Men’s Runway Models and Ladies Collection.</p>
       </div>
 
     </section>
