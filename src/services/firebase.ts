@@ -200,6 +200,43 @@ export async function fetchCatalogFromFirestore(): Promise<{
 }
 
 
+export interface PublicOrderShare {
+  orderId: string;
+  date: string;
+  shopName: string;
+  items: Array<{ id: string; name: string; size: string; quantity: number; price: number; url?: string }>;
+  total: number;
+  currencySymbol: string;
+}
+
+/** Public order pages are addressed by an unguessable token, separate from private orders. */
+export async function saveOrderShareToFirestore(
+  token: string,
+  share: PublicOrderShare
+): Promise<{ success: boolean; message: string }> {
+  const { db } = getFirebaseInstance();
+  if (!db) return { success: false, message: 'Firebase is not configured.' };
+  try {
+    await setDoc(doc(db, 'orderShares', token), share);
+    return { success: true, message: 'Shareable order page saved.' };
+  } catch (error: any) {
+    console.error('Failed to save shareable order page:', error);
+    return { success: false, message: error?.message || 'Could not save the shareable order page.' };
+  }
+}
+
+export async function fetchOrderShareFromFirestore(token: string): Promise<PublicOrderShare | null> {
+  const { db } = getFirebaseInstance();
+  if (!db) return null;
+  try {
+    const snap = await getDoc(doc(db, 'orderShares', token));
+    return snap.exists() ? snap.data() as PublicOrderShare : null;
+  } catch (error) {
+    console.error('Could not load shareable order page:', error);
+    return null;
+  }
+}
+
 /**
  * Shared storefront sections use settings documents so all devices read the same data.
  * Writes require the signed-in Firebase store admin; reads follow the public settings rule.
