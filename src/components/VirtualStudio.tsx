@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Product } from '../types';
+import { Look, Product } from '../types';
 import { addBagItem } from '../services/bagStorage';
 import { formatCurrency } from '../services/storeSettings';
 
@@ -7,6 +7,7 @@ interface VirtualStudioProps {
   shopName: string;
   currencySymbol: string;
   products: Product[];
+  looks: Look[];
 }
 
 type StudioFrame = 'full' | 'mid' | 'portrait';
@@ -22,17 +23,6 @@ const studioImage = (file: string, width: number) =>
   'https://images.higgs.ai/?default=1&output=webp&url=' +
   encodeURIComponent(CDN + file) + '&w=' + width + '&q=85';
 
-const LOOKS = [
-  { name: 'Denim Maxi', category: 'Everyday', file: 'hf_20261112_034542_a6430ecf-9862-412c-8ef6-5745115bd78c.png' },
-  { name: 'Cloud Set', category: 'Everyday', file: 'hf_20261112_034738_73282737-acc8-41e9-a822-96c663e27b6c.png' },
-  { name: 'Library Knit', category: 'Everyday', file: 'hf_20261112_034742_9a8a92fd-79ae-4163-9ffa-14ae2a68717f.png' },
-  { name: 'Lilac Run', category: 'Athletic', file: 'hf_20261112_034735_4e352e03-ad2b-44d1-9fcf-4b5b9454dc55.png' },
-  { name: 'Satin Night', category: 'Sleep', file: 'hf_20261112_034738_aeb8ea57-6399-4f3c-b54a-4a57d0bd971e.png' },
-  { name: 'Night Suit', category: 'Formal', file: 'hf_20261112_034736_aace5c5f-8c14-4b00-83ba-744dbad2e337.png' },
-  { name: 'Sage Slip', category: 'Party', file: 'hf_20261112_034735_3d9fb69e-b4e0-49f7-a2d4-e592bd616c27.png' },
-  { name: 'Bomber Cargo', category: 'Street', file: 'hf_20261112_034740_3e3c5ad7-689b-46a2-8e09-c7d36a569b9c.png' },
-];
-
 const FILTERS = [
   { name: 'Daylight', css: 'none' },
   { name: 'Soft Film', css: 'contrast(.92) saturate(.85) brightness(1.06)' },
@@ -43,10 +33,9 @@ const FILTERS = [
 ];
 
 const DEFAULT_STATE: StudioState = { look: 0, filter: 0, realism: 75, frame: 'full' };
-const LOOK_URLS = LOOKS.map((look) => studioImage(look.file, 1000));
 const BG_URL = studioImage('hf_20261112_034551_6394b127-5366-40a8-9c82-3c416f1161f1.png', 2400);
 
-export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currencySymbol, products }) => {
+export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currencySymbol, products, looks }) => {
   const [scene, setScene] = useState<StudioState>(DEFAULT_STATE);
   const [history, setHistory] = useState<StudioState[]>([DEFAULT_STATE]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -54,21 +43,13 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
   const [activePanel, setActivePanel] = useState<'looks' | 'collection'>('looks');
   const [favorites, setFavorites] = useState<number[]>([]);
   const [saved, setSaved] = useState<number[]>([]);
-  const [selfie, setSelfie] = useState('');
-  const [cameraOpen, setCameraOpen] = useState(false);
-  const [cameraError, setCameraError] = useState('');
-  const [photoMessage, setPhotoMessage] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const latestChange = useRef(0);
 
   useEffect(() => {
-    const images = LOOK_URLS.map((src) => {
+    const images = looks.map((look) => {
       const image = new Image();
-      image.src = src;
+      image.src = look.srcset1080 || look.src640;
       return image;
     });
     const background = new Image();
@@ -77,39 +58,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
       images.forEach((image) => { image.src = ''; });
       background.src = '';
     };
-  }, []);
-
-  useEffect(() => {
-    if (!cameraOpen) return;
-    let active = true;
-    setCameraError('');
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError('Camera capture is unavailable in this browser. You can choose a selfie photo instead.');
-      return () => { active = false; };
-    }
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
-      .then((stream) => {
-        if (!active) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play().catch(() => undefined);
-        }
-      })
-      .catch(() => {
-        if (active) setCameraError('Camera permission was not granted. Choose a selfie image from your device.');
-      });
-
-    return () => {
-      active = false;
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    };
-  }, [cameraOpen]);
+  }, [looks]);
 
   const commitScene = useCallback((next: StudioState) => {
     const kept = history.slice(0, historyIndex + 1);
@@ -151,52 +100,6 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
     latestChange.current += 1;
   };
 
-  const openCamera = () => {
-    setPhotoMessage('');
-    setCameraOpen(true);
-  };
-
-  const closeCamera = () => {
-    setCameraOpen(false);
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-  };
-
-  const captureSelfie = () => {
-    const video = videoRef.current;
-    const canvas = captureCanvasRef.current;
-    if (!video || !canvas || !video.videoWidth) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    context.translate(canvas.width, 0);
-    context.scale(-1, 1);
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    setSelfie(canvas.toDataURL('image/jpeg', 0.86));
-    setPhotoMessage('Selfie saved on this device. Photo-based outfit generation needs an AI service.');
-    closeCamera();
-  };
-
-  const loadSelfieFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setPhotoMessage('Choose an image file for your selfie.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setSelfie(reader.result);
-        setPhotoMessage('Selfie saved on this device. Photo-based outfit generation needs an AI service.');
-        closeCamera();
-      }
-    };
-    reader.readAsDataURL(file);
-    event.target.value = '';
-  };
-
   const addProduct = (product: Product) => {
     const size = product.sizes?.[0] || 'One Size';
     addBagItem({
@@ -210,13 +113,17 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
     });
   };
 
-  const categories = ['All', 'Everyday', 'Athletic', 'Sleep', 'Formal', 'Party', 'Street'];
-  const visibleLooks = LOOKS.map((look, index) => ({ ...look, index }))
-    .filter((look) => category === 'All' || look.category === category);
+  const currentLook = looks[scene.look] || looks[0];
+  const categories = ['All', 'With products'];
+  const visibleLooks = looks.map((look, index) => ({
+    ...look,
+    index,
+    studioCategory: look.productIds.length ? 'Products linked' : 'No products yet',
+  })).filter((look) => category === 'All' || look.productIds.length > 0);
   const visibleProducts = products.filter((product) => product.image);
-  const wornProducts = products.filter((product) =>
-    product.virtualStudioLook === LOOKS[scene.look].name && Boolean(product.image)
-  );
+  const wornProducts = currentLook
+    ? currentLook.productIds.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product?.image))
+    : [];
 
   return (
     <section id="virtual-studio" className="virtual-studio">
@@ -232,34 +139,26 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             <button type="button" className={activePanel === 'looks' ? 'active' : ''} onClick={() => setActivePanel('looks')}>Looks</button>
             <button type="button" className={activePanel === 'collection' ? 'active' : ''} onClick={() => setActivePanel('collection')}>My collection</button>
           </div>
-          <div className="vs-header-actions">
-            <button type="button" className="vs-camera-button" onClick={openCamera} aria-label="Take a selfie">
-              <span aria-hidden="true">◎</span><span>{selfie ? 'Retake selfie' : 'Camera selfie'}</span>
-            </button>
-            <input ref={fileInputRef} className="vs-file-input" type="file" accept="image/*" capture="user" onChange={loadSelfieFile} />
-            <button type="button" className="vs-upload-button" onClick={() => fileInputRef.current?.click()}>Upload photo</button>
-          </div>
         </header>
 
         <div className="vs-stage">
           <div className="vs-profile">
             <div className="vs-avatar">
-              <img src={selfie || LOOK_URLS[scene.look]} alt={selfie ? 'Your saved selfie' : LOOKS[scene.look].name + ' model'} />
+              {currentLook?.src640 && <img src={currentLook.src640} alt={currentLook.name + ' model'} />}
             </div>
             <div className="vs-profile-copy">
-              <span className="vs-eyebrow">{selfie ? 'SELFIE CAPTURED' : 'STYLE PREVIEW'}</span>
-              <strong>{selfie ? 'Your photo is ready' : LOOKS[scene.look].name}</strong>
-              <span>{selfie ? 'Stored on this device only' : 'Select a look to preview'}</span>
+              <span className="vs-eyebrow">ADMIN MODEL</span>
+              <strong>{currentLook?.name || 'No model selected'}</strong>
+              <span>{currentLook ? 'Photo and assigned pieces from Admin' : 'Add a model in Admin → Runway Models'}</span>
             </div>
-            {selfie && <button type="button" className="vs-clear-selfie" onClick={() => { setSelfie(''); setPhotoMessage(''); }} aria-label="Remove selfie">×</button>}
           </div>
 
           <div className={'vs-model-frame ' + scene.frame} style={{ filter: FILTERS[scene.filter].css + ' saturate(' + (0.65 + scene.realism / 200) + ')' }}>
             <img
-              key={LOOKS[scene.look].file}
+              key={currentLook?.id || 'no-model'}
               className="vs-model-image"
-              src={LOOK_URLS[scene.look]}
-              alt={LOOKS[scene.look].name + ' outfit on the studio model'}
+              src={currentLook?.srcset1080 || currentLook?.src640 || ''}
+              alt={(currentLook?.name || 'Studio') + ' model wearing the assigned outfit'}
               onAnimationEnd={(event) => event.currentTarget.classList.remove('changing')}
               onLoad={(event) => event.currentTarget.classList.add('changing')}
             />
@@ -275,16 +174,16 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                 </div>
                 <div className="vs-categories">
                   {categories.map((item) => (
-                    <button key={item} type="button" className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>
+                    <button key={item} type="button" className={(item === 'All' ? category === 'All' : category === 'With products') ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>
                   ))}
                 </div>
                 <div className="vs-look-grid">
                   {visibleLooks.map((look) => (
                     <article key={look.index} className={'vs-look-card ' + (scene.look === look.index ? 'selected' : '')}>
                       <button type="button" className="vs-look-select" onClick={() => chooseLook(look.index)} aria-label={'Preview ' + look.name}>
-                        <img src={studioImage(LOOKS[look.index].file, 360)} alt="" loading="lazy" />
+                        <img src={look.src640} alt="" loading="lazy" />
                         <span>{look.name}</span>
-                        <i>{look.category}</i>
+                        <i>{look.studioCategory}</i>
                       </button>
                       <button
                         type="button"
@@ -297,8 +196,8 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                   ))}
                 </div>
                 <div className="vs-selected-description">
-                  <strong>{LOOKS[scene.look].name}</strong>
-                  <span>Choose a look above. Your shop’s products and accessories are available in My collection.</span>
+                  <strong>{currentLook?.name || 'No model selected'}</strong>
+                  <span>Choose a model. Its assigned products appear below and in My collection.</span>
                 </div>
               </>
             ) : (
@@ -315,7 +214,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                         <img src={product.image} alt="" loading="lazy" />
                       </button>
                       <strong>{product.name}</strong>
-                      {product.virtualStudioLook && <small className="vs-product-look-label">Worn in {product.virtualStudioLook}</small>}
+                      {looks.filter((look) => look.productIds.includes(product.id)).map((look) => <small className="vs-product-look-label" key={look.id}>Worn in {look.name}</small>)}
                       <span>{formatCurrency(product.price, currencySymbol)}</span>
                       <div className="vs-product-actions">
                         <button type="button" onClick={() => setSelectedProduct(product)}>Details</button>
@@ -346,14 +245,6 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             )}
           </aside>
 
-          {selfie && (
-            <div className="vs-tryon-notice" role="status">
-              <strong>Your selfie is ready</strong>
-              <span>AI outfit generation isn’t connected yet. The studio preview still shows the selected look on its model.</span>
-              <button type="button" onClick={() => setPhotoMessage('Your selfie stays on this device until you remove it.')}>Privacy details</button>
-            </div>
-          )}
-
           <div className="vs-bottom-controls">
             <button type="button" onClick={undo} disabled={historyIndex <= 0}>↶ <span>Undo</span></button>
             <button type="button" onClick={redo} disabled={historyIndex >= history.length - 1}>↷ <span>Redo</span></button>
@@ -378,7 +269,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
           <div className="vs-worn-heading">
             <div>
               <span className="vs-eyebrow">SHOP THE MODEL</span>
-              <h2 id="vs-worn-title">Worn in {LOOKS[scene.look].name}</h2>
+              <h2 id="vs-worn-title">Worn in {currentLook?.name || 'this look'}</h2>
             </div>
             <span>{wornProducts.length} {wornProducts.length === 1 ? 'piece' : 'pieces'}</span>
           </div>
@@ -398,27 +289,13 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             </div>
           ) : (
             <p className="vs-worn-empty">
-              No products are linked to this outfit yet. In Admin → Clothes Inventory, edit each matching item and choose “{LOOKS[scene.look].name}” under Virtual Studio Outfit Match.
+              No products are assigned to this model yet. In Admin → Runway Models, edit this model and select its clothes under “Assign Clothes to this Look.”
             </p>
           )}
         </section>
-        <p className="vs-photo-note">{photoMessage || 'Camera selfies stay in this browser. To generate your face wearing selected clothes, connect an AI try-on service.'}</p>
+        <p className="vs-photo-note">Upload your model photo and assign its products in Admin → Runway Models. Customers can add those pieces to their bag below.</p>
       </div>
 
-      {cameraOpen && (
-        <div className="vs-camera-modal" role="dialog" aria-modal="true" aria-label="Take a selfie">
-          <div className="vs-camera-card">
-            <div className="vs-camera-heading"><div><span className="vs-eyebrow">CAMERA</span><h2>Take a selfie</h2></div><button type="button" onClick={closeCamera} aria-label="Close camera">×</button></div>
-            {cameraError ? <p className="vs-camera-error">{cameraError}</p> : <video ref={videoRef} autoPlay playsInline muted />}
-            <canvas ref={captureCanvasRef} className="vs-hidden-canvas" />
-            <div className="vs-camera-actions">
-              <button type="button" onClick={() => fileInputRef.current?.click()}>Choose photo</button>
-              <button type="button" className="primary" onClick={captureSelfie} disabled={Boolean(cameraError)}>Capture selfie</button>
-            </div>
-            <p>Your selfie is kept in this browser and is not uploaded.</p>
-          </div>
-        </div>
-      )}
     </section>
   );
 };
