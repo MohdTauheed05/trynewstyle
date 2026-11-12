@@ -1,3 +1,4 @@
+import { saveSharedSectionToFirestore } from './firebase';
 export interface LadiesRailItem {
   id: string;
   name: string;
@@ -95,10 +96,15 @@ export function getStoredLadiesRailItems(): LadiesRailItem[] {
   return DEFAULT_LADIES_RAIL_ITEMS;
 }
 
-export function saveLadiesRailItems(items: LadiesRailItem[]): void {
+export function saveLadiesRailItems(items: LadiesRailItem[], persistCloud = true): void {
   try {
     localStorage.setItem(STORAGE_KEY_LADIES_RAIL, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent('runway:ladies_rail_updated'));
+    if (persistCloud) {
+      void saveSharedSectionToFirestore('shared_ladies_rail', { items }).then((result) => {
+        if (!result.success) console.error(result.message);
+      });
+    }
   } catch (e) {
     console.error('Failed to save ladies rail items to storage', e);
   }
