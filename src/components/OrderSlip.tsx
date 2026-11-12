@@ -24,7 +24,7 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
   onClearCart,
 }) => {
   useScrollLock(true);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(order.shareWarning || '');
   const [png, setPng] = useState<Blob | null>(null);
   const [pngFailed, setPngFailed] = useState(false);
   const orderRef = useRef(order);
