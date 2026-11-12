@@ -1002,7 +1002,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 : 'text-neutral-600 hover:text-black'
             }`}
           >
-            Men’s Runway Models ({looks.length})
+            Model Groups: Men / Ladies / Western ({looks.length})
           </button>
           <button
             type="button"
