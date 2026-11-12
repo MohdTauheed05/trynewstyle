@@ -160,6 +160,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     return unsubscribe;
   }, []);
 
+  // Cloud hydration can finish after the admin panel first mounts. Keep its
+  // editing forms aligned with the shared values loaded into local storage.
+  useEffect(() => {
+    const refreshSharedSections = () => {
+      setRailItems(getStoredRailItems());
+      setLadiesPieces(getStoredLadiesPieces());
+      setLadiesSettings(getStoredLadiesSettings());
+      setLadiesRailItems(getStoredLadiesRailItems());
+    };
+    window.addEventListener('runway:rail_updated', refreshSharedSections);
+    window.addEventListener('runway:ladies_updated', refreshSharedSections);
+    window.addEventListener('runway:ladies_rail_updated', refreshSharedSections);
+    return () => {
+      window.removeEventListener('runway:rail_updated', refreshSharedSections);
+      window.removeEventListener('runway:ladies_updated', refreshSharedSections);
+      window.removeEventListener('runway:ladies_rail_updated', refreshSharedSections);
+    };
+  }, []);
+
   const selectedLook = looks.find((l) => l.id === selectedModelLookId) || looks[0];
   const focusedProduct = products.find((p) => p.id === focusedProductId);
   const getProduct = (id: string): Product | undefined => products.find((p) => p.id === id);
