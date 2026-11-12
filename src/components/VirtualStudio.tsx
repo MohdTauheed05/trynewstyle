@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Look, Product } from '../types';
+import { Product } from '../types';
 import { addBagItem } from '../services/bagStorage';
 import { formatCurrency } from '../services/storeSettings';
 
@@ -7,7 +7,6 @@ interface VirtualStudioProps {
   shopName: string;
   currencySymbol: string;
   products: Product[];
-  looks: Look[];
 }
 
 type StudioFrame = 'full' | 'mid' | 'portrait';
@@ -23,6 +22,17 @@ const studioImage = (file: string, width: number) =>
   'https://images.higgs.ai/?default=1&output=webp&url=' +
   encodeURIComponent(CDN + file) + '&w=' + width + '&q=85';
 
+const LOOKS = [
+  { name: 'Denim Maxi', category: 'Everyday', file: 'hf_20261112_034542_a6430ecf-9862-412c-8ef6-5745115bd78c.png' },
+  { name: 'Cloud Set', category: 'Everyday', file: 'hf_20261112_034738_73282737-acc8-41e9-a822-96c663e27b6c.png' },
+  { name: 'Library Knit', category: 'Everyday', file: 'hf_20261112_034742_9a8a92fd-79ae-4163-9ffa-14ae2a68717f.png' },
+  { name: 'Lilac Run', category: 'Athletic', file: 'hf_20261112_034735_4e352e03-ad2b-44d1-9fcf-4b5b9454dc55.png' },
+  { name: 'Satin Night', category: 'Sleep', file: 'hf_20261112_034738_aeb8ea57-6399-4f3c-b54a-4a57d0bd971e.png' },
+  { name: 'Night Suit', category: 'Formal', file: 'hf_20261112_034736_aace5c5f-8c14-4b00-83ba-744dbad2e337.png' },
+  { name: 'Sage Slip', category: 'Party', file: 'hf_20261112_034735_3d9fb69e-b4e0-49f7-a2d4-e592bd616c27.png' },
+  { name: 'Bomber Cargo', category: 'Street', file: 'hf_20261112_034740_3e3c5ad7-689b-46a2-8e09-c7d36a569b9c.png' },
+];
+
 const FILTERS = [
   { name: 'Daylight', css: 'none' },
   { name: 'Soft Film', css: 'contrast(.92) saturate(.85) brightness(1.06)' },
@@ -33,9 +43,10 @@ const FILTERS = [
 ];
 
 const DEFAULT_STATE: StudioState = { look: 0, filter: 0, realism: 75, frame: 'full' };
+const LOOK_URLS = LOOKS.map((look) => studioImage(look.file, 1000));
 const BG_URL = studioImage('hf_20261112_034551_6394b127-5366-40a8-9c82-3c416f1161f1.png', 2400);
 
-export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currencySymbol, products, looks }) => {
+export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currencySymbol, products }) => {
   const [scene, setScene] = useState<StudioState>(DEFAULT_STATE);
   const [history, setHistory] = useState<StudioState[]>([DEFAULT_STATE]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -47,9 +58,9 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
   const latestChange = useRef(0);
 
   useEffect(() => {
-    const images = looks.map((look) => {
+    const images = LOOK_URLS.map((src) => {
       const image = new Image();
-      image.src = look.srcset1080 || look.src640;
+      image.src = src;
       return image;
     });
     const background = new Image();
@@ -58,7 +69,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
       images.forEach((image) => { image.src = ''; });
       background.src = '';
     };
-  }, [looks]);
+  }, []);
 
   const commitScene = useCallback((next: StudioState) => {
     const kept = history.slice(0, historyIndex + 1);
@@ -76,7 +87,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
     if (index === scene.look) return;
     const token = ++latestChange.current;
     const image = new Image();
-    image.src = looks[index].srcset1080 || looks[index].src640;
+    image.src = LOOK_URLS[index];
     const apply = () => {
       if (token !== latestChange.current) return;
       commitScene({ ...scene, look: index });
@@ -113,17 +124,14 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
     });
   };
 
-  const currentLook = looks[scene.look] || looks[0];
-  const categories = ['All', 'With products'];
-  const visibleLooks = looks.map((look, index) => ({
-    ...look,
-    index,
-    studioCategory: look.productIds.length ? 'Products linked' : 'No products yet',
-  })).filter((look) => category === 'All' || look.productIds.length > 0);
+  const currentLook = LOOKS[scene.look];
+  const categories = ['All', 'Everyday', 'Athletic', 'Sleep', 'Formal', 'Party', 'Street'];
+  const visibleLooks = LOOKS.map((look, index) => ({ ...look, index }))
+    .filter((look) => category === 'All' || look.category === category);
   const visibleProducts = products.filter((product) => product.image);
-  const wornProducts = currentLook
-    ? currentLook.productIds.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product?.image))
-    : [];
+  const wornProducts = products.filter((product) =>
+    product.virtualStudioLook === currentLook.name && Boolean(product.image)
+  );
 
   return (
     <section id="virtual-studio" className="virtual-studio">
@@ -144,21 +152,21 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
         <div className="vs-stage">
           <div className="vs-profile">
             <div className="vs-avatar">
-              {currentLook?.src640 && <img src={currentLook.src640} alt={currentLook.name + ' model'} />}
+              <img src={LOOK_URLS[scene.look]} alt={currentLook.name + ' female model'} />
             </div>
             <div className="vs-profile-copy">
-              <span className="vs-eyebrow">ADMIN MODEL</span>
-              <strong>{currentLook?.name || 'No model selected'}</strong>
-              <span>{currentLook ? 'Photo and assigned pieces from Admin' : 'Add a model in Admin → Runway Models'}</span>
+              <span className="vs-eyebrow">WESTERN MODEL</span>
+              <strong>{currentLook.name}</strong>
+              <span>Western Wear 3D female look</span>
             </div>
           </div>
 
           <div className={'vs-model-frame ' + scene.frame} style={{ filter: FILTERS[scene.filter].css + ' saturate(' + (0.65 + scene.realism / 200) + ')' }}>
             <img
-              key={currentLook?.id || 'no-model'}
+              key={currentLook.file}
               className="vs-model-image"
-              src={currentLook?.srcset1080 || currentLook?.src640 || ''}
-              alt={(currentLook?.name || 'Studio') + ' model wearing the assigned outfit'}
+              src={LOOK_URLS[scene.look]}
+              alt={currentLook.name + ' female model wearing the Western outfit'}
               onAnimationEnd={(event) => event.currentTarget.classList.remove('changing')}
               onLoad={(event) => event.currentTarget.classList.add('changing')}
             />
@@ -174,16 +182,16 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                 </div>
                 <div className="vs-categories">
                   {categories.map((item) => (
-                    <button key={item} type="button" className={(item === 'All' ? category === 'All' : category === 'With products') ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>
+                    <button key={item} type="button" className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>
                   ))}
                 </div>
                 <div className="vs-look-grid">
                   {visibleLooks.map((look) => (
                     <article key={look.index} className={'vs-look-card ' + (scene.look === look.index ? 'selected' : '')}>
                       <button type="button" className="vs-look-select" onClick={() => chooseLook(look.index)} aria-label={'Preview ' + look.name}>
-                        <img src={look.src640} alt="" loading="lazy" />
+                        <img src={studioImage(look.file, 360)} alt="" loading="lazy" />
                         <span>{look.name}</span>
-                        <i>{look.studioCategory}</i>
+                        <i>{look.category}</i>
                       </button>
                       <button
                         type="button"
@@ -196,8 +204,8 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                   ))}
                 </div>
                 <div className="vs-selected-description">
-                  <strong>{currentLook?.name || 'No model selected'}</strong>
-                  <span>Choose a model. Its assigned products appear below and in My collection.</span>
+                  <strong>{currentLook.name}</strong>
+                  <span>Choose a Western female look. Match products from Clothes Inventory to show them below.</span>
                 </div>
               </>
             ) : (
@@ -214,7 +222,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                         <img src={product.image} alt="" loading="lazy" />
                       </button>
                       <strong>{product.name}</strong>
-                      {looks.filter((look) => look.productIds.includes(product.id)).map((look) => <small className="vs-product-look-label" key={look.id}>Worn in {look.name}</small>)}
+                      {product.virtualStudioLook && <small className="vs-product-look-label">Worn in {product.virtualStudioLook}</small>}
                       <span>{formatCurrency(product.price, currencySymbol)}</span>
                       <div className="vs-product-actions">
                         <button type="button" onClick={() => setSelectedProduct(product)}>Details</button>
@@ -269,7 +277,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
           <div className="vs-worn-heading">
             <div>
               <span className="vs-eyebrow">SHOP THE MODEL</span>
-              <h2 id="vs-worn-title">Worn in {currentLook?.name || 'this look'}</h2>
+              <h2 id="vs-worn-title">Worn in {currentLook.name}</h2>
             </div>
             <span>{wornProducts.length} {wornProducts.length === 1 ? 'piece' : 'pieces'}</span>
           </div>
@@ -289,11 +297,11 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
             </div>
           ) : (
             <p className="vs-worn-empty">
-              No products are assigned to this model yet. In Admin → Runway Models, edit this model and select its clothes under “Assign Clothes to this Look.”
+              No products are matched to this Western look yet. In Admin → Clothes Inventory, edit each product and choose “{currentLook.name}” under Western Wear 3D Look Match.
             </p>
           )}
         </section>
-        <p className="vs-photo-note">Upload your model photo and assign its products in Admin → Runway Models. Customers can add those pieces to their bag below.</p>
+        <p className="vs-photo-note">Western female models stay separate from the Men’s Runway Models and Ladies Collection.</p>
       </div>
 
     </section>
