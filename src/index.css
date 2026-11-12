@@ -2957,3 +2957,5 @@ button:focus-visible, a:focus-visible {
   .vs-worn-copy { min-height: 68px; }
   .vs-worn-heading h2 { font-size: 18px; }
 }
+
+.virtual-studio { scroll-margin-top: var(--header-h, 64px); }
