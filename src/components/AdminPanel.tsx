@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Look, Product, LookPin } from '../types';
 import { saveLooks, saveProducts, resetToDefaults } from '../services/catalogStorage';
 import {
@@ -8,11 +8,12 @@ import {
   formatCurrency,
 } from '../services/storeSettings';
 import {
-  testFirestoreConnection,
   syncCatalogToFirestore,
   fetchCatalogFromFirestore,
   signInStoreAdmin,
   signOutStoreAdmin,
+  subscribeStoreAdminAuth,
+  updateStoreAdminCredentials,
   saveStoreSettingsToFirestore,
 } from '../services/firebase';
 import {
@@ -57,10 +58,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onNavigateToRunway,
 }) => {
   // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('runway_admin_auth') === 'true';
-  });
-  const [loginUsername, setLoginUsername] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
@@ -147,6 +147,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     message: string;
     type: 'success' | 'error' | 'info' | '';
   }>({ loading: false, message: '', type: '' });
+  const [currentAdminPassword, setCurrentAdminPassword] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = subscribeStoreAdminAuth((authenticated) => {
+      setIsAuthenticated(authenticated);
+      setIsCheckingAuth(false);
+    });
+    return unsubscribe;
+  }, []);
 
   const selectedLook = looks.find((l) => l.id === selectedModelLookId) || looks[0];
   const focusedProduct = products.find((p) => p.id === focusedProductId);
@@ -157,40 +169,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // --------------------------------------------------------------------------
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const correctUser = settings.adminUsername || 'admin';
-    const correctPass = settings.adminPasswordHash || 'password123';
-
-    if (loginUsername === correctUser && loginPassword === correctPass) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('runway_admin_auth', 'true');
-      setLoginError('');
-      const email = import.meta.env.VITE_FIREBASE_ADMIN_EMAIL || '';
-      if (!email) {
-        setFirebaseStatus({
-          loading: false,
-          message: 'Shared saving needs VITE_FIREBASE_ADMIN_EMAIL and a Firebase admin account. This login is local only until cloud access is configured.',
-          type: 'error',
-        });
-        return;
-      }
-      const authResult = await signInStoreAdmin(email, loginPassword);
-      setFirebaseStatus({
-        loading: false,
-        message: authResult.message,
-        type: authResult.success ? 'success' : 'error',
-      });
-    } else {
-      setLoginError('Invalid username or password. Default is admin / password123');
+    setLoginError('');
+    const result = await signInStoreAdmin(loginEmail.trim(), loginPassword);
+    if (!result.success) {
+      setLoginError(result.message);
+      return;
     }
+    setIsAuthenticated(true);
+    setLoginPassword('');
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    sessionStorage.removeItem('runway_admin_auth');
     void signOutStoreAdmin();
   };
 
-  // If not authenticated, show sleek Admin Login Form
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-[#111111] flex items-center justify-center p-4 text-white text-sm">
+        Checking Firebase admin session...
+      </div>
+    );
+  }
+
+  // Firebase Authentication is the only login authority.
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#111111] flex items-center justify-center p-4">
@@ -201,7 +203,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </span>
             <h2 className="text-xl font-bold mt-2 text-neutral-900">Admin Control Panel</h2>
             <p className="text-xs text-neutral-500 mt-1">
-              Enter your credentials to manage clothes, runway models, and store settings.
+              Sign in with the email and password for your Firebase Authentication admin account.
             </p>
           </div>
 
@@ -213,13 +215,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <form onSubmit={handleLogin} className="space-y-4 text-xs">
             <div>
-              <label className="block font-semibold text-neutral-700 mb-1">Username</label>
+              <label className="block font-semibold text-neutral-700 mb-1">Firebase Admin Email</label>
               <input
-                type="text"
+                type="email"
+                autoComplete="username"
                 required
-                value={loginUsername}
-                onChange={(e) => setLoginUsername(e.target.value)}
-                placeholder="Default: admin"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder={import.meta.env.VITE_FIREBASE_ADMIN_EMAIL || 'owner@example.com'}
                 className="w-full border border-neutral-300 p-2.5 bg-neutral-50 focus:bg-white focus:border-black focus:outline-none"
               />
             </div>
@@ -228,10 +231,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <label className="block font-semibold text-neutral-700 mb-1">Password</label>
               <input
                 type="password"
+                autoComplete="current-password"
                 required
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Default: password123"
+                placeholder="Firebase Auth password"
                 className="w-full border border-neutral-300 p-2.5 bg-neutral-50 focus:bg-white focus:border-black focus:outline-none"
               />
             </div>
@@ -847,19 +851,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         : `Saved only on this device. Shared save failed: ${result.message}`,
       type: result.success ? 'success' : 'error',
     });
-    alert(result.success
-      ? 'Store settings saved for all devices.'
-      : `Settings saved on this device only. To share them across devices: ${result.message}`);
   };
 
-  const handleTestFirebase = async () => {
-    setFirebaseStatus({ loading: true, message: 'Pinging Firebase Firestore...', type: 'info' });
-    const res = await testFirestoreConnection();
+  const handleUpdateAdminCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentAdminPassword) {
+      setFirebaseStatus({ loading: false, message: 'Enter your current Firebase password to confirm this change.', type: 'error' });
+      return;
+    }
+    if (!newAdminEmail.trim() && !newAdminPassword) {
+      setFirebaseStatus({ loading: false, message: 'Enter a new Firebase login email, a new password, or both.', type: 'error' });
+      return;
+    }
+    if (newAdminPassword && newAdminPassword !== confirmAdminPassword) {
+      setFirebaseStatus({ loading: false, message: 'The new password and confirmation do not match.', type: 'error' });
+      return;
+    }
+    setFirebaseStatus({ loading: true, message: 'Updating Firebase Authentication credentials...', type: 'info' });
+    const result = await updateStoreAdminCredentials(currentAdminPassword, newAdminEmail.trim(), newAdminPassword);
     setFirebaseStatus({
       loading: false,
-      message: res.message,
-      type: res.success ? 'success' : 'error',
+      message: result.message,
+      type: result.success ? 'success' : 'error',
     });
+    if (result.success) {
+      setCurrentAdminPassword('');
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+      setConfirmAdminPassword('');
+    }
   };
 
   const handleSyncToFirestore = async () => {
@@ -986,7 +1006,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 : 'text-neutral-600 hover:text-black'
             }`}
           >
-            Shop & Firebase Settings
+            Shop Settings
           </button>
         </div>
 
@@ -1903,7 +1923,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         )}
 
         {/* ================================================================== */}
-        {/* TAB 6: SHOP SETTINGS & FIREBASE CONSOLE */}
+        {/* TAB 6: SHOP SETTINGS */}
         {/* ================================================================== */}
         {activeTab === 'settings' && (
           <div className="space-y-8 max-w-3xl">
@@ -1993,31 +2013,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-neutral-200">
-                <h4 className="font-bold text-neutral-800 mb-2">Admin Credentials</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold mb-1">Username</label>
-                    <input
-                      type="text"
-                      required
-                      value={settingsForm.adminUsername}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, adminUsername: e.target.value })}
-                      className="w-full border border-neutral-300 p-2 focus:border-black focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={settingsForm.adminPasswordHash}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, adminPasswordHash: e.target.value })}
-                      className="w-full border border-neutral-300 p-2 focus:border-black focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
 
               <div className="pt-2 flex justify-end">
                 <button
@@ -2029,22 +2024,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </form>
 
-            {/* Firebase Console Database Integration */}
             <div className="bg-white border border-[#e4e4e4] p-6 space-y-5 text-xs shadow-sm">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">
-                    Firebase Console Database Connection
-                  </h3>
-                </div>
+                <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Firebase Admin Login</h3>
                 <p className="text-neutral-500 mt-1">
-                  Connect your Firebase Firestore database for online cloud storage (ready for Vercel deployment).
+                  Login credentials are managed by Firebase Authentication. Enter your current password to confirm changes.
+                  A new email address takes effect after you confirm the verification email.
                 </p>
               </div>
 
               {firebaseStatus.message && (
                 <div
+                  role="status"
                   className={`p-3 text-xs border ${
                     firebaseStatus.type === 'success'
                       ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -2057,116 +2048,88 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleUpdateAdminCredentials} className="space-y-4">
                 <div>
-                  <label className="block font-semibold mb-1">Project ID</label>
+                  <label className="block font-semibold mb-1">Current Firebase Password</label>
                   <input
-                    type="text"
-                    value={settingsForm.firebaseConfig.projectId}
-                    onChange={(e) =>
-                      setSettingsForm({
-                        ...settingsForm,
-                        firebaseConfig: {
-                          ...settingsForm.firebaseConfig,
-                          projectId: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="my-project-id"
-                    className="w-full border border-neutral-300 p-2 focus:border-black focus:outline-none"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={currentAdminPassword}
+                    onChange={(e) => setCurrentAdminPassword(e.target.value)}
+                    className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
                   />
                 </div>
-
                 <div>
-                  <label className="block font-semibold mb-1">API Key</label>
+                  <label className="block font-semibold mb-1">New Admin Email (optional)</label>
                   <input
-                    type="text"
-                    value={settingsForm.firebaseConfig.apiKey}
-                    onChange={(e) =>
-                      setSettingsForm({
-                        ...settingsForm,
-                        firebaseConfig: {
-                          ...settingsForm.firebaseConfig,
-                          apiKey: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="AIzaSy..."
-                    className="w-full border border-neutral-300 p-2 focus:border-black focus:outline-none"
+                    type="email"
+                    autoComplete="email"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    placeholder="Leave blank to keep the current email"
+                    className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
                   />
                 </div>
-
-                <div>
-                  <label className="block font-semibold mb-1">Auth Domain (Optional)</label>
-                  <input
-                    type="text"
-                    value={settingsForm.firebaseConfig.authDomain}
-                    onChange={(e) =>
-                      setSettingsForm({
-                        ...settingsForm,
-                        firebaseConfig: {
-                          ...settingsForm.firebaseConfig,
-                          authDomain: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="my-project.firebaseapp.com"
-                    className="w-full border border-neutral-300 p-2 focus:border-black focus:outline-none"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold mb-1">New Password (optional)</label>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      value={newAdminPassword}
+                      onChange={(e) => setNewAdminPassword(e.target.value)}
+                      placeholder="Leave blank to keep the current password"
+                      className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold mb-1">Confirm New Password</label>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      value={confirmAdminPassword}
+                      onChange={(e) => setConfirmAdminPassword(e.target.value)}
+                      className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                    />
+                  </div>
                 </div>
-
-                <div>
-                  <label className="block font-semibold mb-1">App ID</label>
-                  <input
-                    type="text"
-                    value={settingsForm.firebaseConfig.appId}
-                    onChange={(e) =>
-                      setSettingsForm({
-                        ...settingsForm,
-                        firebaseConfig: {
-                          ...settingsForm.firebaseConfig,
-                          appId: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="1:123456789:web:abcdef"
-                    className="w-full border border-neutral-300 p-2 focus:border-black focus:outline-none"
-                  />
+                <div className="flex justify-end border-t border-neutral-200 pt-3">
+                  <button
+                    type="submit"
+                    disabled={firebaseStatus.loading}
+                    className="px-5 py-2.5 bg-black text-white font-semibold hover:bg-neutral-800 disabled:opacity-50"
+                  >
+                    {firebaseStatus.loading ? 'Updating...' : 'Update Firebase Login'}
+                  </button>
                 </div>
-              </div>
+              </form>
 
-              <div className="flex flex-wrap items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleTestFirebase}
-                  disabled={firebaseStatus.loading}
-                  className="px-4 py-2 border border-neutral-300 font-semibold hover:bg-neutral-50 transition-colors"
-                >
-                  {firebaseStatus.loading ? 'Connecting...' : 'Test Connection'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSyncToFirestore}
-                  disabled={firebaseStatus.loading}
-                  className="px-4 py-2 bg-black text-white font-semibold hover:bg-neutral-800 transition-colors"
-                >
-                  Upload Catalog to Firestore
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFetchFromFirestore}
-                  disabled={firebaseStatus.loading}
-                  className="px-4 py-2 bg-neutral-100 text-neutral-800 font-semibold hover:bg-neutral-200 transition-colors"
-                >
-                  Fetch from Firestore
-                </button>
-              </div>
-
-              <div className="bg-neutral-50 p-3 border border-neutral-200 text-[11px] text-neutral-600 space-y-1.5">
-                <div className="font-semibold text-neutral-800">Deploying to Vercel Checklist:</div>
-                <p>1. Copy the project files to your Git repository and deploy to Vercel.</p>
-                <p>2. In your Vercel Project Settings &gt; Environment Variables, add <code>VITE_FIREBASE_API_KEY</code> and <code>VITE_FIREBASE_PROJECT_ID</code> or save your credentials directly in this settings tab.</p>
-                <p>3. In Firebase Console, enable Firestore Database under Build &gt; Firestore Database.</p>
+              <div className="border-t border-neutral-200 pt-4">
+                <h4 className="font-semibold text-neutral-800">Cloud Catalog Sync</h4>
+                <p className="text-neutral-500 mt-1">
+                  Upload the current catalog to Firestore or fetch the shared catalog onto this device.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={handleSyncToFirestore}
+                    disabled={firebaseStatus.loading}
+                    className="px-4 py-2 bg-black text-white font-semibold hover:bg-neutral-800 disabled:opacity-50"
+                  >
+                    Upload Catalog to Firestore
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFetchFromFirestore}
+                    disabled={firebaseStatus.loading}
+                    className="px-4 py-2 bg-neutral-100 text-neutral-800 font-semibold hover:bg-neutral-200 disabled:opacity-50"
+                  >
+                    Fetch from Firestore
+                  </button>
+                </div>
               </div>
             </div>
           </div>
