@@ -3,17 +3,6 @@ export interface StoreSettings {
   shopTagline: string;
   currencySymbol: string;
   whatsappNumber: string;
-  adminUsername: string;
-  adminPasswordHash: string; // Plain or hashed string for client validation
-  firebaseConfig: {
-    apiKey: string;
-    authDomain: string;
-    projectId: string;
-    storageBucket: string;
-    messagingSenderId: string;
-    appId: string;
-    firestoreDatabaseId?: string;
-  };
 }
 
 const STORAGE_KEY_SETTINGS = 'runway_store_settings_v1';
@@ -23,17 +12,6 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   shopTagline: 'Six looks, styled head to toe. Tap a pin to see the piece.',
   currencySymbol: '$',
   whatsappNumber: import.meta.env.VITE_WHATSAPP_NUMBER || '',
-  adminUsername: 'admin',
-  adminPasswordHash: 'password123',
-  firebaseConfig: {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
-    firestoreDatabaseId: '(default)',
-  },
 };
 
 export function cleanCurrencySymbol(raw: string | undefined): string {
@@ -60,6 +38,12 @@ export function getStoredSettings(): StoreSettings {
     const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
+    // Remove legacy device-local credentials and Firebase config from prior versions.
+    if (parsed && typeof parsed === 'object') {
+      delete parsed.adminUsername;
+      delete parsed.adminPasswordHash;
+      delete parsed.firebaseConfig;
+    }
     const merged = { ...DEFAULT_SETTINGS, ...parsed };
     if (merged.whatsappNumber === '15551234567') {
       merged.whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || '';
@@ -69,6 +53,8 @@ export function getStoredSettings(): StoreSettings {
     }
     // Auto-clean any $AED, $SAR, etc. to AED, SAR
     merged.currencySymbol = cleanCurrencySymbol(merged.currencySymbol);
+    // Persist the sanitized shape so old local passwords are removed from this device.
+    localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(merged));
     return merged;
   } catch (e) {
     console.error('Failed to load store settings', e);
