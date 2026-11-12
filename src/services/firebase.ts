@@ -1,5 +1,14 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import {
+  EmailAuthProvider,
+  getAuth,
+  onAuthStateChanged,
+  reauthenticateWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+  updatePassword,
+  verifyBeforeUpdateEmail,
+} from 'firebase/auth';
 import {
   getFirestore,
   Firestore,
@@ -11,23 +20,20 @@ import {
   getDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { getStoredSettings, StoreSettings } from './storeSettings';
+import { StoreSettings } from './storeSettings';
 import { Look, Product } from '../types';
 
 let cachedApp: FirebaseApp | null = null;
 let cachedDb: Firestore | null = null;
 
 export function getFirebaseInstance(): { app: FirebaseApp | null; db: Firestore | null } {
-  const settings = getStoredSettings();
-  const cfg = settings.firebaseConfig;
-
-  // Check if API key and project ID are configured
-  const apiKey = cfg.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || '';
-  const projectId = cfg.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
-  const authDomain = cfg.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`;
-  const storageBucket = cfg.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`;
-  const messagingSenderId = cfg.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '';
-  const appId = cfg.appId || import.meta.env.VITE_FIREBASE_APP_ID || '';
+  // Firebase configuration is supplied by Vercel environment variables, never editable in Admin.
+  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY || '';
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
+  const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`;
+  const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`;
+  const messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '';
+  const appId = import.meta.env.VITE_FIREBASE_APP_ID || '';
 
   if (!apiKey || !projectId) {
     return { app: null, db: null };
@@ -55,11 +61,16 @@ export function getFirebaseInstance(): { app: FirebaseApp | null; db: Firestore 
 }
 
 export function isFirebaseConfigured(): boolean {
-  const settings = getStoredSettings();
-  const cfg = settings.firebaseConfig;
-  const apiKey = cfg.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || '';
-  const projectId = cfg.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
-  return Boolean(apiKey && projectId);
+  return Boolean(import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.VITE_FIREBASE_PROJECT_ID);
+}
+
+export function subscribeStoreAdminAuth(onAuthenticated: (authenticated: boolean) => void): () => void {
+  const { app } = getFirebaseInstance();
+  if (!app) {
+    onAuthenticated(false);
+    return () => undefined;
+  }
+  return onAuthStateChanged(getAuth(app), (user) => onAuthenticated(Boolean(user)));
 }
 
 export async function testFirestoreConnection(): Promise<{ success: boolean; message: string }> {
@@ -182,13 +193,52 @@ export async function fetchCatalogFromFirestore(): Promise<{
 
 export async function signInStoreAdmin(email: string, password: string): Promise<{ success: boolean; message: string }> {
   const { app } = getFirebaseInstance();
-  if (!app) return { success: false, message: 'Firebase is not configured.' };
-  if (!email) return { success: false, message: 'Set VITE_FIREBASE_ADMIN_EMAIL to the store admin Firebase Auth email.' };
+  if (!app) return { success: false, message: 'Firebase is not configured. Check the Vercel Firebase environment variables.' };
+  if (!email.trim()) return { success: false, message: 'Enter the Firebase Authentication admin email.' };
   try {
-    await signInWithEmailAndPassword(getAuth(app), email, password);
-    return { success: true, message: 'Signed in to shared store settings.' };
+    await signInWithEmailAndPassword(getAuth(app), email.trim(), password);
+    return { success: true, message: 'Signed in to the Firebase admin account.' };
   } catch (error: any) {
     return { success: false, message: error?.message || 'Firebase admin sign-in failed.' };
+  }
+}
+
+export async function updateStoreAdminCredentials(
+  currentPassword: string,
+  newEmail: string,
+  newPassword: string
+): Promise<{ success: boolean; message: string }> {
+  const { app } = getFirebaseInstance();
+  if (!app) return { success: false, message: 'Firebase is not configured.' };
+  const auth = getAuth(app);
+  const user = auth.currentUser;
+  if (!user?.email) return { success: false, message: 'Sign in with the Firebase admin email before changing credentials.' };
+  if (!currentPassword) return { success: false, message: 'Enter your current Firebase password to confirm this change.' };
+
+  try {
+    await reauthenticateWithCredential(
+      user,
+      EmailAuthProvider.credential(user.email, currentPassword)
+    );
+
+    const emailChanged = Boolean(newEmail.trim() && newEmail.trim().toLowerCase() !== user.email.toLowerCase());
+    if (emailChanged) {
+      await verifyBeforeUpdateEmail(user, newEmail.trim());
+    }
+    if (newPassword) {
+      await updatePassword(user, newPassword);
+    }
+
+    const changes = [
+      emailChanged ? 'A verification link was sent to the new email. The login email changes after you confirm it.' : '',
+      newPassword ? 'The Firebase password was updated.' : '',
+    ].filter(Boolean);
+    return { success: true, message: changes.join(' ') || 'No credential changes were requested.' };
+  } catch (error: any) {
+    const message = error?.code === 'auth/requires-recent-login'
+      ? 'Please sign out and sign in again, then retry the credential change.'
+      : error?.message || 'Could not update Firebase credentials.';
+    return { success: false, message };
   }
 }
 
