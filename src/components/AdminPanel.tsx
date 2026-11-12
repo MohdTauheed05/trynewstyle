@@ -112,6 +112,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     looks[0]?.productIds[0] || products[0]?.id || ''
   );
   const [isCalibratingPin, setIsCalibratingPin] = useState(false);
+  const [modelGroupFilter, setModelGroupFilter] = useState<'men' | 'ladies' | 'western'>('men');
 
   // Clothes CRUD Modal State
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -138,6 +139,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     name: '',
     description: '',
     src640: '',
+    modelGroup: 'men' as 'men' | 'ladies' | 'western',
     selectedProductIds: [] as string[],
   });
 
@@ -184,6 +186,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const selectedLook = looks.find((l) => l.id === selectedModelLookId) || looks[0];
   const focusedProduct = products.find((p) => p.id === focusedProductId);
   const getProduct = (id: string): Product | undefined => products.find((p) => p.id === id);
+  const modelLooks = looks.filter((look) => (look.modelGroup || 'men') === modelGroupFilter);
 
   // --------------------------------------------------------------------------
   // Admin Login Handler
@@ -454,6 +457,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       name: '',
       description: 'Styled streetwear silhouette.',
       src640: 'https://reel-ref-try-the-look.vercel.app/assets/model-1-640.webp',
+      modelGroup: modelGroupFilter,
       selectedProductIds: products.slice(0, 3).map((p) => p.id),
     });
     setLookModalOpen(true);
@@ -465,6 +469,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       name: look.name,
       description: look.description,
       src640: look.src640,
+      modelGroup: look.modelGroup || 'men',
       selectedProductIds: [...look.productIds],
     });
     setLookModalOpen(true);
@@ -492,6 +497,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         description: lookForm.description,
         src640: lookForm.src640,
         srcset1080: lookForm.src640,
+        modelGroup: lookForm.modelGroup,
         productIds: lookForm.selectedProductIds,
         pins: updatedPins,
       };
@@ -519,6 +525,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         description: lookForm.description || 'Full-body streetwear model',
         src640: lookForm.src640 || 'https://reel-ref-try-the-look.vercel.app/assets/model-1-640.webp',
         srcset1080: lookForm.src640 || 'https://reel-ref-try-the-look.vercel.app/assets/original-look-1.webp',
+        modelGroup: lookForm.modelGroup,
         productIds: lookForm.selectedProductIds,
         pins: newPins,
         isCustom: true,
@@ -1436,9 +1443,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="space-y-6">
             <div className="bg-white border border-[#e4e4e4] p-5 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold">Men’s Runway Models & Looks</h2>
+                <h2 className="text-base font-semibold">{modelGroupFilter === 'men' ? 'Men’s Runway Models' : modelGroupFilter === 'ladies' ? 'Ladies Runway Models' : 'Western Wear 3D Models'}</h2>
                 <p className="text-xs text-neutral-500 mt-0.5">
-                  Upload model photographs, assign clothes to each look, and adjust the 3D ring sequence.
+                  Upload a model photo, choose its group, and assign the clothes that model wears.
                 </p>
               </div>
               <button
@@ -1450,8 +1457,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+              {([
+                ['men', 'Men', looks.filter((look) => !look.modelGroup || look.modelGroup === 'men').length],
+                ['ladies', 'Ladies', looks.filter((look) => look.modelGroup === 'ladies').length],
+                ['western', 'Western', looks.filter((look) => look.modelGroup === 'western').length + 8],
+              ] as const).map(([group, label, count]) => (
+                <button
+                  key={group}
+                  type="button"
+                  onClick={() => setModelGroupFilter(group)}
+                  className={modelGroupFilter === group ? 'px-3 py-2 bg-black text-white text-xs font-semibold' : 'px-3 py-2 bg-white border border-neutral-300 text-xs'}
+                >
+                  {label} Models ({count})
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {looks.map((look, i) => (
+              {modelLooks.map((look, i) => (
                 <div
                   key={look.id}
                   className="bg-white border border-[#e4e4e4] p-5 flex flex-col justify-between"
@@ -2392,6 +2416,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   placeholder="e.g. Relaxed streetwear layers and vintage washed denim."
                   className="w-full border border-neutral-300 p-2 focus:border-black focus:outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Model Group</label>
+                <select
+                  value={lookForm.modelGroup}
+                  onChange={(e) => setLookForm({ ...lookForm, modelGroup: e.target.value as 'men' | 'ladies' | 'western' })}
+                  className="w-full border border-neutral-300 p-2 bg-white focus:border-black focus:outline-none"
+                >
+                  <option value="men">Men’s Runway Models</option>
+                  <option value="ladies">Ladies Models</option>
+                  <option value="western">Western Wear 3D Models</option>
+                </select>
+                <p className="mt-1 text-[11px] text-neutral-500">Each group stays separate on the storefront.</p>
               </div>
 
               {/* Model Cutout Image Upload */}
