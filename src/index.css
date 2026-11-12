@@ -2882,3 +2882,21 @@ button:focus-visible, a:focus-visible {
   .vs-look-card img { height: 92px; }
   .vs-product-detail { inset: 34px 8px 8px; padding: 10px; }
 }
+
+/* Virtual studio cards use separate select and favorite buttons. */
+.vs-look-card { padding: 0; }
+.vs-look-select {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+.vs-look-select img { flex: 0 0 auto; }
+.vs-look-card .favorite { z-index: 1; }
