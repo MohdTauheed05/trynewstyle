@@ -23,6 +23,9 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   const [ladiesPieces, setLadiesPieces] = useState(() => getStoredLadiesPieces());
   const [firstLadiesLook, setFirstLadiesLook] = useState(() => getStoredLadiesSettings().firstLookNumber || 15);
   const wheelLock = useRef(0);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const ringRef = useRef<HTMLDivElement | null>(null);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -49,6 +52,17 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   }, [isZoomed]);
 
   useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const measure = () => setStageSize({ width: stage.clientWidth, height: stage.clientHeight });
+    measure();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    observer?.observe(stage);
+    window.addEventListener('resize', measure);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
+
+  useEffect(() => {
     const sync = () => { setLadiesPieces(getStoredLadiesPieces()); setFirstLadiesLook(getStoredLadiesSettings().firstLookNumber || 15); };
     window.addEventListener('runway:ladies_updated', sync);
     window.addEventListener('runway:catalog_updated', sync);
@@ -69,7 +83,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         id: 'ladies-depth-' + lookNumber, name: 'Ladies Look ' + String(lookNumber).padStart(2, '0'),
         image: LADIES_MODELS_SHEET, group: 'women' as const, products: [],
         ladiesPieces: ladiesPieces.filter((piece) => piece.lookNumber === lookNumber),
-        visualScale: 0.78,
+        visualScale: 0.72,
         crop: [x0, x1, LADIES_MODEL_Y0, LADIES_MODEL_Y1] as [number, number, number, number],
       };
     });
@@ -143,13 +157,17 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
     const angle = delta * (Math.PI * 2 / visibleSlots);
     const depth = (1 + Math.cos(angle)) / 2;
     const mobile = typeof window !== 'undefined' && window.innerWidth < 901;
-    const rx = mobile ? 32 : 29;
-    const ry = mobile ? 18 : 19;
+    const stageWidth = stageSize.width || window.innerWidth - (mobile ? 24 : 354);
+    const stageHeight = stageSize.height || window.innerHeight - (mobile ? 219 : 58);
+    const ringWidth = ringRef.current?.clientWidth || Math.min(window.innerWidth * (mobile ? 0.74 : 0.58), mobile ? 360 : 900);
+    const ringHeight = ringRef.current?.clientHeight || (mobile ? ringWidth : Math.min(window.innerHeight * 0.38, 360));
+    const rx = (ringWidth / 2 / stageWidth) * 100;
+    const ry = (ringHeight / 2 / stageHeight) * 100;
     const x = 50 + Math.sin(angle) * rx;
-    const y = (mobile ? 66 : 60) + Math.cos(angle) * ry;
+    const centerY = mobile ? 56 : 60;
+    const y = centerY + Math.cos(angle) * ry;
     const entry = ringEntries[index];
-    const mobileArtScale = entry?.crop ? 0.58 : entry?.id.startsWith('western-preset-') ? 0.7 : 1.1;
-    const scale = (0.62 + depth * 0.50) * (mobile ? mobileArtScale : (entry?.visualScale || 1));
+    const scale = 0.9 * (entry?.visualScale || 1);
     const inRing = true;
     return {
       left: x + '%', top: y + '%', zIndex: Math.round(depth * 100) + 1,
@@ -190,7 +208,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         @media(max-width:900px){.cl-zoom-card{width:94vw;height:74dvh;max-height:calc(100dvh - 20px);padding:12px 6px}.cl-zoom-image{height:calc(100% - 32px)}.cl-zoom-image img{max-width:88vw;max-height:56dvh}.cl-zoom-image svg{max-width:88vw;max-height:56dvh}.cl-zoom-close{top:clamp(92px, 15vh, 132px);left:calc(50% + clamp(65px, 22vw, 98px));width:48px;height:48px}.circle-lookbook{height:100svh;min-height:570px;padding:0 12px}.cl-top{height:54px}.cl-signal{display:none}.cl-brand{position:static;transform:none}.cl-stage{inset:54px 0 148px}
           .cl-stage{inset:54px 0 165px}.cl-ring{width:72vw;height:34vh;top:66%}.cl-orbit-model{width:clamp(72px,20vw,142px);height:clamp(180px,34vh,320px)}
           .cl-dock{top:auto;left:10px;right:10px;bottom:0;width:auto;min-height:154px;max-height:165px;display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 0 13px;border-left:0;border-top:1px solid #e6e6e6;overflow:hidden}.cl-dock-info{grid-column:1}.cl-items{grid-column:1/-1;grid-row:2;flex-direction:row;overflow-x:auto;overflow-y:hidden}.cl-shop-link{grid-column:2;grid-row:1}.cl-item{width:auto;min-width:185px;height:78px;min-height:78px}.cl-item img,.cl-item-thumb{width:60px;height:60px}}
-        @media(max-width:390px){.cl-orbit-model{width:19vw;height:23vh}.cl-ring{width:76vw;height:31vh;top:66%}.cl-stage{inset:54px 0 170px}.cl-item{min-width:172px}.cl-item-title strong{max-width:80px}}
+        @media(max-width:390px){.cl-orbit-model{width:19vw;height:23vh}.cl-ring{width:min(78vw,62svh,340px);height:auto;aspect-ratio:1;top:56%}.cl-stage{inset:54px 0 170px}.cl-item{min-width:172px}.cl-item-title strong{max-width:80px}}
         @media(prefers-reduced-motion:reduce){.cl-orbit-model{transition:none}}
       `}</style>
       <div className="cl-top">
