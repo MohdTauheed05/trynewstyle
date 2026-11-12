@@ -114,6 +114,9 @@ export function resetLadiesRailItems(): LadiesRailItem[] {
   try {
     localStorage.removeItem(STORAGE_KEY_LADIES_RAIL);
     window.dispatchEvent(new CustomEvent('runway:ladies_rail_updated'));
+    void saveSharedSectionToFirestore('shared_ladies_rail', { items: DEFAULT_LADIES_RAIL_ITEMS }).then((result) => {
+      if (!result.success) console.error(result.message);
+    });
   } catch (e) {
     console.error('Failed to reset ladies rail items', e);
   }
