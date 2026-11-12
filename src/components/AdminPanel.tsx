@@ -222,7 +222,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 required
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder={import.meta.env.VITE_FIREBASE_ADMIN_EMAIL || 'owner@example.com'}
+                placeholder="owner@example.com"
                 className="w-full border border-neutral-300 p-2.5 bg-neutral-50 focus:bg-white focus:border-black focus:outline-none"
               />
             </div>
