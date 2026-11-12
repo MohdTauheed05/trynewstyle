@@ -7,6 +7,7 @@ export interface SlipOrder {
   customerName?: string;
   notes?: string;
   shareUrl?: string;
+  shareWarning?: string;
   items: BagItem[];
   total: number;
   currencyText: (n: number) => string;
