@@ -147,7 +147,7 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
     updateCurve();
   };
 
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+  const handleWheel = (event: React.WheelEvent<HTMLElement>) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
@@ -238,7 +238,7 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
   };
 
   return (
-    <section className="reelmark-products" aria-labelledby="reelmark-products-title">
+    <section className="reelmark-products" aria-labelledby="reelmark-products-title" onWheel={handleWheel}>
       <style>{`
         .reelmark-products{--rm-ink:#101410;--rm-green:#08482d;--rm-mint:#dae7c7;background:#f5f8ef;color:var(--rm-ink);padding:clamp(52px,7vw,100px) 0 clamp(38px,5vw,72px);overflow:hidden}
         .reelmark-products *{box-sizing:border-box}
@@ -306,7 +306,6 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
           onTouchStart={() => { pauseUntilRef.current = Date.now() + 1400; }}
           onTouchMove={() => { pauseUntilRef.current = Date.now() + 1400; }}
           onTouchEnd={() => { pauseUntilRef.current = Date.now() + 1100; }}
-          onWheel={handleWheel}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerEnd}
