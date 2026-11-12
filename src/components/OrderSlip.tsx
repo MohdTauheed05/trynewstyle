@@ -95,25 +95,8 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
       return;
     }
 
-    const shareText = `${caption}\n📱 Shop WhatsApp: +${cleanPhone}`;
-    if (png && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
-      const slipFile = new File([png], fileName, { type: 'image/png' });
-      try {
-        if (navigator.canShare({ files: [slipFile] })) {
-          await navigator.share({
-            files: [slipFile],
-            title: `Order ${order.orderId} - ${order.shopName}`,
-            text: shareText,
-          });
-          setNote('Choose WhatsApp in the share sheet, select the shop owner, and send. The slip photo and order links are included together.');
-          return;
-        }
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        // Fall back to opening the owner's chat if file sharing is unsupported by the target.
-      }
-    }
-
+    // wa.me opens the chat for this exact owner number and pre-fills the order,
+    // product links, and shareable order page on both desktop and mobile.
     const chatUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(caption)}`;
     let clipboardJob: Promise<boolean> = Promise.resolve(false);
     try {
@@ -128,17 +111,36 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
       clipboardJob = Promise.resolve(false);
     }
 
-    const win = window.open(chatUrl, '_blank', 'noopener,noreferrer');
+    // Open synchronously from the tap so mobile browsers do not block the chat.
+    const win = window.open(chatUrl, '_blank');
     if (!win) window.location.href = chatUrl;
 
     const copied = await clipboardJob;
     if (copied) {
-      setNote('Owner chat opened with order text and product links. Paste the copied slip photo in the chat, then send.');
+      setNote('Owner chat opened with the order and product links. Paste the copied slip photo in the chat, then tap Send.');
     } else if (downloadPng()) {
-      setNote('Owner chat opened with order text and product links. Attach the saved slip photo in the chat, then send.');
+      setNote('Owner chat opened with the order and product links. Attach the saved slip photo in the chat, then tap Send.');
     } else {
-      setNote('Owner chat opened with order text and product links. Save or screenshot the slip photo and attach it in the chat.');
+      setNote('Owner chat opened with the order and product links. Save or screenshot the slip photo and attach it in the chat.');
     }
+  };
+
+  const handleShareSlipPhoto = async () => {
+    if (!png) {
+      setNote('Slip image is not ready yet.');
+      return;
+    }
+    const slipFile = new File([png], fileName, { type: 'image/png' });
+    if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [slipFile] })) {
+      try {
+        await navigator.share({ files: [slipFile], title: `Order ${order.orderId} - ${order.shopName}` });
+        setNote('Choose a contact or app to share the slip photo.');
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+    handleSave();
   };
 
   return createPortal(
@@ -295,20 +297,28 @@ export const OrderSlip: React.FC<OrderSlipProps> = ({
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86.173.086.275.072.376-.043.101-.116.433-.506.549-.68.116-.173.231-.145.39-.086s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824zm-3.392-12.416c-5.523 0-10 4.477-10 10 0 1.765.459 3.424 1.261 4.869l-1.261 4.606 4.71-1.236c1.396.762 2.996 1.192 4.69 1.192 5.524 0 10-4.477 10-10s-4.476-10-10-10z" />
             </svg>
-            <span>{!png && !pngFailed ? 'Preparing slip…' : 'Share order and slip'}</span>
+            <span>{!png && !pngFailed ? 'Preparing slip…' : 'Open owner’s WhatsApp'}</span>
           </button>
           <div className="flex gap-2.5">
             <button
               type="button"
               onClick={handleSave}
-              className="flex-1 h-10 bg-white text-[#111] text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-neutral-200 transition-colors"
+              className="flex-1 h-10 bg-white text-[#111] text-[10px] font-semibold uppercase tracking-wide cursor-pointer hover:bg-neutral-200 transition-colors"
             >
-              Save slip (PNG)
+              Save PNG
+            </button>
+            <button
+              type="button"
+              onClick={handleShareSlipPhoto}
+              disabled={!png}
+              className="flex-1 h-10 bg-white text-[#111] text-[10px] font-semibold uppercase tracking-wide cursor-pointer hover:bg-neutral-200 transition-colors disabled:opacity-50"
+            >
+              Share photo
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-10 border border-white/60 text-white text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-white/15 transition-colors"
+              className="flex-1 h-10 border border-white/60 text-white text-[10px] font-semibold uppercase tracking-wide cursor-pointer hover:bg-white/15 transition-colors"
             >
               Close
             </button>
