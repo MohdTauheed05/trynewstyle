@@ -100,17 +100,20 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
     let delta = index - selectedIndex;
     if (delta > count / 2) delta -= count;
     if (delta < -count / 2) delta += count;
-    const angle = delta * (Math.PI * 2 / count);
+    const visibleSlots = Math.min(9, count);
+    const angle = delta * (Math.PI * 2 / visibleSlots);
     const depth = (1 + Math.cos(angle)) / 2;
     const mobile = typeof window !== 'undefined' && window.innerWidth < 700;
-    const rx = mobile ? 37 : 38;
-    const ry = mobile ? 33 : 34;
+    const rx = mobile ? 32 : 31;
+    const ry = mobile ? 22 : 23;
     const x = 50 + Math.sin(angle) * rx;
     const y = 50 + Math.cos(angle) * ry;
-    const scale = 0.48 + depth * 0.56;
+    const scale = 0.58 + depth * 0.50;
+    const inRing = Math.abs(delta) <= Math.floor(visibleSlots / 2);
     return {
       left: x + '%', top: y + '%', zIndex: Math.round(depth * 100) + 1,
-      opacity: Math.max(0.35, 0.62 + depth * 0.38),
+      opacity: inRing ? Math.max(0.48, 0.72 + depth * 0.28) : 0,
+      visibility: inRing ? 'visible' : 'hidden', pointerEvents: inRing ? 'auto' : 'none',
       transform: 'translate(-50%, -100%) scale(' + scale + ')',
     };
   };
@@ -127,25 +130,25 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         .circle-lookbook{--ink:#151515;--muted:#757575;position:relative;isolation:isolate;height:100svh;min-height:620px;max-height:1000px;overflow:hidden;background:#fff;color:var(--ink);padding:0 24px}
         .circle-lookbook *{box-sizing:border-box}.cl-top{height:58px;position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e6e6e6;font:10px/1 Arial,sans-serif;letter-spacing:.13em}
         .cl-brand{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;letter-spacing:-.04em}.cl-brand sup{font-size:8px}.cl-signal,.cl-top-right{display:flex;align-items:center;gap:12px}.cl-signal{color:#777}
-        .cl-stage{position:absolute;inset:58px 0 150px;overflow:hidden}.cl-ring{position:absolute;left:50%;top:51%;width:min(68vw,780px);height:min(50vh,400px);transform:translate(-50%,-50%);border:1px dashed #e3e3e3;border-radius:50%;pointer-events:none}
+        .cl-stage{position:absolute;inset:58px 0 150px;overflow:hidden}.cl-ring{position:absolute;left:50%;top:49%;width:min(60vw,690px);height:min(42vh,350px);transform:translate(-50%,-50%);border:1px dashed #e3e3e3;border-radius:50%;pointer-events:none}
         .cl-center-title{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);font:400 clamp(30px,4.2vw,58px)/.88 Georgia,serif;letter-spacing:-.04em;text-align:center;white-space:nowrap;z-index:0}
         .cl-subtitle{font:10px Arial,sans-serif;letter-spacing:.08em;color:#888;margin-top:12px;line-height:1.4}
-        .cl-orbit-model{position:absolute;width:clamp(66px,11vw,150px);height:clamp(145px,27vh,290px);transform-origin:center center;transition:left .75s cubic-bezier(.16,1,.3,1),top .75s cubic-bezier(.16,1,.3,1),transform .75s cubic-bezier(.16,1,.3,1),opacity .5s;cursor:pointer;background:none;border:0;padding:0;display:flex;align-items:flex-end;justify-content:center}
+        .cl-orbit-model{position:absolute;width:clamp(86px,14vw,190px);height:clamp(170px,32vh,340px);transform-origin:center center;transition:left .75s cubic-bezier(.16,1,.3,1),top .75s cubic-bezier(.16,1,.3,1),transform .75s cubic-bezier(.16,1,.3,1),opacity .5s;cursor:pointer;background:none;border:0;padding:0;display:flex;align-items:flex-end;justify-content:center}
         .cl-orbit-model img,.cl-orbit-model svg{width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 5px 5px #0002);pointer-events:none}
         .cl-orbit-model span{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font:8px Arial,sans-serif;letter-spacing:.1em;white-space:nowrap;text-transform:uppercase;color:#555;opacity:0;transition:opacity .2s}
         .cl-orbit-model[aria-current=true] span,.cl-orbit-model:hover span{opacity:1}
         .cl-shadow{position:absolute;bottom:8%;left:50%;width:22%;height:2%;border-radius:50%;background:#0002;filter:blur(5px);transform:translateX(-50%);z-index:0}
-        .cl-dock{position:absolute;z-index:5;left:18px;right:18px;bottom:0;min-height:122px;display:grid;grid-template-columns:minmax(165px, .8fr) minmax(0, 2.2fr) auto;align-items:center;gap:20px;border-top:1px solid #e6e6e6;background:#fff;padding:12px 0 17px}
+        .cl-dock{position:absolute;z-index:5;left:18px;right:18px;bottom:0;min-height:142px;display:grid;grid-template-columns:minmax(165px, .8fr) minmax(0, 2.2fr) auto;align-items:center;gap:20px;border-top:1px solid #e6e6e6;background:#fff;padding:12px 0 17px}
         .cl-look-name{font:400 clamp(18px,2vw,28px)/1 Georgia,serif;text-transform:uppercase;margin-top:5px}.cl-counter,.cl-kicker{font:9px Arial,sans-serif;color:#666;letter-spacing:.14em;text-transform:uppercase}
         .cl-items{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}.cl-items::-webkit-scrollbar{display:none}
-        .cl-item{flex:0 0 auto;min-width:170px;max-width:230px;height:72px;border:1px dashed #ccc;border-radius:99px;padding:5px 13px 5px 6px;display:flex;align-items:center;gap:10px;background:#fff}
-        .cl-item img,.cl-item-thumb{width:58px;height:58px;border-radius:50%;object-fit:cover;background:#f1f1f1;flex:none}.cl-item-title{display:grid;gap:4px;min-width:0}.cl-item-title strong{font:11px Arial,sans-serif;text-transform:uppercase;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cl-item-title small{font:10px Arial,sans-serif;color:#777}
-        .cl-item button{border:0;border-radius:50%;width:30px;height:30px;background:#111;color:#fff;cursor:pointer;flex:none;font-size:14px;line-height:1}
+        .cl-item{flex:0 0 auto;min-width:210px;max-width:280px;height:88px;border:1px dashed #ccc;border-radius:99px;padding:5px 13px 5px 6px;display:flex;align-items:center;gap:10px;background:#fff}
+        .cl-item img,.cl-item-thumb{width:70px;height:70px;border-radius:50%;object-fit:cover;background:#f1f1f1;flex:none}.cl-item-title{display:grid;gap:4px;min-width:0}.cl-item-title strong{font:12px Arial,sans-serif;text-transform:uppercase;max-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cl-item-title small{font:11px Arial,sans-serif;color:#777}
+        .cl-item button{border:0;border-radius:50%;width:34px;height:34px;background:#111;color:#fff;cursor:pointer;flex:none;font-size:14px;line-height:1}
         .cl-empty{font:11px Arial,sans-serif;color:#888}.cl-shop-link{font:9px Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
         @media(max-width:700px){.circle-lookbook{height:100svh;min-height:570px;padding:0 12px}.cl-top{height:54px}.cl-signal{display:none}.cl-brand{position:static;transform:none}.cl-stage{inset:54px 0 148px}
-          .cl-stage{inset:54px 0 160px}.cl-ring{width:78vw;height:40vh;top:50%}.cl-center-title{top:45%;font-size:clamp(29px,8vw,42px)}.cl-orbit-model{width:clamp(54px,15vw,102px);height:clamp(120px,23vh,220px)}
-          .cl-dock{left:10px;right:10px;min-height:140px;grid-template-columns:1fr auto;gap:8px;padding:10px 0 13px}.cl-dock-info{grid-column:1}.cl-items{grid-column:1/-1;grid-row:2}.cl-shop-link{grid-column:2;grid-row:1}.cl-item{min-width:150px;height:64px}.cl-item img,.cl-item-thumb{width:48px;height:48px}}
-        @media(max-width:390px){.cl-orbit-model{width:19vw;height:23vh}.cl-ring{width:82vw;height:36vh}.cl-stage{inset:54px 0 160px}.cl-item{min-width:138px}.cl-item-title strong{max-width:80px}}
+          .cl-stage{inset:54px 0 165px}.cl-ring{width:76vw;height:36vh;top:50%}.cl-center-title{top:45%;font-size:clamp(29px,8vw,42px)}.cl-orbit-model{width:clamp(72px,20vw,142px);height:clamp(150px,29vh,280px)}
+          .cl-dock{left:10px;right:10px;min-height:154px;grid-template-columns:1fr auto;gap:8px;padding:10px 0 13px}.cl-dock-info{grid-column:1}.cl-items{grid-column:1/-1;grid-row:2}.cl-shop-link{grid-column:2;grid-row:1}.cl-item{min-width:185px;height:78px}.cl-item img,.cl-item-thumb{width:60px;height:60px}}
+        @media(max-width:390px){.cl-orbit-model{width:19vw;height:23vh}.cl-ring{width:80vw;height:32vh}.cl-stage{inset:54px 0 170px}.cl-item{min-width:172px}.cl-item-title strong{max-width:80px}}
         @media(prefers-reduced-motion:reduce){.cl-orbit-model{transition:none}}
       `}</style>
       <div className="cl-top">
