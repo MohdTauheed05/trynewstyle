@@ -49,7 +49,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
 
   const entries = useMemo<Entry[]>(() => {
     const modelEntries: Entry[] = looks
-      .filter((look) => look.modelGroup === 'men' || look.modelGroup === 'ladies' || look.modelGroup === 'western')
+      .filter((look) => !look.modelGroup || look.modelGroup === 'men' || look.modelGroup === 'ladies' || look.modelGroup === 'western')
       .map((look) => ({
         id: look.id,
         name: look.name,
@@ -178,7 +178,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
               <div className="cl-products-head"><div><span className="cl-kicker">SHOP THIS LOOK</span><h3>{active.name}</h3></div><span className="cl-count">{productsForActive.length} pieces</span></div>
               {productsForActive.length ? <div className="cl-product-grid">{productsForActive.map((item) => (
                 <article className="cl-product" key={item.id}>
-                  <div className="cl-product-image">{item.image ? <img src={item.image} alt={item.name} loading="lazy" /> : <span className="cl-product-placeholder">✳</span>}</div>
+                  <div className="cl-product-image">{item.image ? <img src={item.image} alt={item.name} loading="lazy" /> : item.piece?.box ? <svg viewBox={\`\${item.piece.box[0]} \${item.piece.box[2]} \${item.piece.box[1] - item.piece.box[0]} \${item.piece.box[3] - item.piece.box[2]}\`} width="100%" height="100%"><image href="https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20261102_042057_080e85b0-b4aa-4072-8eb9-2304c7baf42b.png&w=2400&q=85" width="960" height="720" /></svg> : <span className="cl-product-placeholder">✳</span>}</div>
                   <div className="cl-product-copy"><strong>{item.name}</strong><span>{formatCurrency(item.price, currencySymbol)}</span></div>
                   <button type="button" onClick={item.onAdd}>Add to bag</button>
                 </article>
