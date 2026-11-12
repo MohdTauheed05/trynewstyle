@@ -1,4 +1,6 @@
 import React from 'react';
+import { LADIES_PIECES_SHEET } from '../services/ladiesStorage';
+import { BagItemCrop } from '../types';
 
 interface SharedOrderItem {
   id: string;
@@ -8,6 +10,7 @@ interface SharedOrderItem {
   price: number;
   image?: string;
   url?: string;
+  crop?: BagItemCrop;
 }
 
 interface SharedOrder {
@@ -44,7 +47,16 @@ export const OrderPage: React.FC<{ order: SharedOrder }> = ({ order }) => {
           <ul className="mt-4 divide-y divide-neutral-200">
             {order.items.map((item) => (
               <li key={item.id + item.size} className="flex gap-4 py-4">
-                {item.image ? (
+                {item.crop ? (
+                  <svg
+                    viewBox={`${item.crop.x} ${item.crop.y} ${item.crop.w} ${item.crop.h}`}
+                    role="img"
+                    aria-label={item.name}
+                    className="h-24 w-20 shrink-0 bg-neutral-100"
+                  >
+                    <image href={LADIES_PIECES_SHEET} width={item.crop.sheetW} height={item.crop.sheetH} />
+                  </svg>
+                ) : item.image ? (
                   <img src={item.image} alt={item.name} className="h-24 w-20 shrink-0 bg-neutral-100 object-contain" />
                 ) : (
                   <div className="h-24 w-20 shrink-0 bg-neutral-100 grid place-items-center text-[10px] text-neutral-500">Photo unavailable</div>
