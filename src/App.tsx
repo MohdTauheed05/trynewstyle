@@ -9,6 +9,7 @@ import { LadiesDepthLookbook } from './components/LadiesDepthLookbook';
 import { LadiesRailSection } from './components/LadiesRailSection';
 import { VirtualStudio } from './components/VirtualStudio';
 import { CircleLookbook } from './components/CircleLookbook';
+import { ProductSpotlightCarousel } from './components/ProductSpotlightCarousel';
 import { Look, Product } from './types';
 import { getStoredLooks, getStoredProducts, saveLooks, saveProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
@@ -287,6 +288,12 @@ export default function App() {
               shopName={settings.shopName}
               currencySymbol={currentCurrency}
               looks={looks}
+              products={products}
+            />
+
+            <ProductSpotlightCarousel
+              shopName={settings.shopName}
+              currencySymbol={currentCurrency}
               products={products}
             />
           </main>
