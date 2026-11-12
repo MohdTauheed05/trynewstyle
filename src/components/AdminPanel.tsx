@@ -9,6 +9,7 @@ import {
 } from '../services/storeSettings';
 import {
   syncCatalogToFirestore,
+  saveSharedSectionToFirestore,
   fetchCatalogFromFirestore,
   signInStoreAdmin,
   signOutStoreAdmin,
@@ -902,12 +903,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleSyncToFirestore = async () => {
-    setFirebaseStatus({ loading: true, message: 'Syncing catalog to Firestore...', type: 'info' });
-    const res = await syncCatalogToFirestore(products, looks, settingsForm);
+    setFirebaseStatus({ loading: true, message: 'Syncing all storefront sections to Firestore...', type: 'info' });
+    const [catalogResult, railResult, ladiesResult, ladiesRailResult] = await Promise.all([
+      syncCatalogToFirestore(products, looks, settingsForm),
+      saveSharedSectionToFirestore('shared_rail', { items: railItems }),
+      saveSharedSectionToFirestore('shared_ladies', { pieces: ladiesPieces, settings: ladiesSettings }),
+      saveSharedSectionToFirestore('shared_ladies_rail', { items: ladiesRailItems }),
+    ]);
+    const failed = [catalogResult, railResult, ladiesResult, ladiesRailResult].filter((result) => !result.success);
     setFirebaseStatus({
       loading: false,
-      message: res.message,
-      type: res.success ? 'success' : 'error',
+      message: failed.length
+        ? `Some sections failed to sync: ${failed.map((result) => result.message).join(' ')}`
+        : 'All product, look, rail, ladies, and store settings are saved to Firestore for every device.',
+      type: failed.length ? 'error' : 'success',
     });
   };
 
@@ -2138,7 +2147,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     disabled={firebaseStatus.loading}
                     className="px-4 py-2 bg-black text-white font-semibold hover:bg-neutral-800 disabled:opacity-50"
                   >
-                    Upload Catalog to Firestore
+                    Upload All Store Data to Firestore
                   </button>
                   <button
                     type="button"
