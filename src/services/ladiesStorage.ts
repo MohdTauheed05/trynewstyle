@@ -1,3 +1,4 @@
+import { saveSharedSectionToFirestore } from './firebase';
 import { LadiesPiece, LadiesSectionSettings } from '../types';
 
 export const LADIES_MODELS_SHEET =
@@ -141,10 +142,18 @@ export function getStoredLadiesPieces(): LadiesPiece[] {
   return DEFAULT_LADIES_PIECES;
 }
 
-export function saveLadiesPieces(pieces: LadiesPiece[]): void {
+export function saveLadiesPieces(pieces: LadiesPiece[], persistCloud = true): void {
   try {
     localStorage.setItem(STORAGE_KEY_LADIES_PIECES, JSON.stringify(pieces));
     window.dispatchEvent(new CustomEvent('runway:ladies_updated'));
+    if (persistCloud) {
+      void saveSharedSectionToFirestore('shared_ladies', {
+        pieces,
+        settings: getStoredLadiesSettings(),
+      }).then((result) => {
+        if (!result.success) console.error(result.message);
+      });
+    }
   } catch (e) {
     console.error('Failed to save ladies pieces', e);
   }
@@ -164,10 +173,18 @@ export function getStoredLadiesSettings(): LadiesSectionSettings {
   return DEFAULT_LADIES_SETTINGS;
 }
 
-export function saveLadiesSettings(settings: LadiesSectionSettings): void {
+export function saveLadiesSettings(settings: LadiesSectionSettings, persistCloud = true): void {
   try {
     localStorage.setItem(STORAGE_KEY_LADIES_SETTINGS, JSON.stringify(settings));
     window.dispatchEvent(new CustomEvent('runway:ladies_updated'));
+    if (persistCloud) {
+      void saveSharedSectionToFirestore('shared_ladies', {
+        pieces: getStoredLadiesPieces(),
+        settings,
+      }).then((result) => {
+        if (!result.success) console.error(result.message);
+      });
+    }
   } catch (e) {
     console.error('Failed to save ladies settings', e);
   }
