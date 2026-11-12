@@ -190,7 +190,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({ shopName, currency
                 </article>
               ))}
             </div>
-          </aside>  </aside>
+          </aside>
 
         </div>
 
