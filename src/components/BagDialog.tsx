@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Product } from '../types';
 import { clearBag, getBagDetailedItems, removeFromBag } from '../services/bagStorage';
-import { saveOrderToFirestore } from '../services/firebase';
+import { saveOrderShareToFirestore, saveOrderToFirestore } from '../services/firebase';
 import { formatCurrency } from '../services/storeSettings';
 import { useScrollLock } from '../services/scrollLock';
 import { OrderSlip } from './OrderSlip';
@@ -71,7 +71,7 @@ export const BagDialog: React.FC<BagDialogProps> = ({
   };
 
   /** Step 1: print the slip on screen (nothing is sent yet). */
-  const handlePrintSlip = () => {
+  const handlePrintSlip = async () => {
     if (items.length === 0 || orderingRef.current) return;
     orderingRef.current = true;
     setTimeout(() => {
@@ -98,7 +98,35 @@ export const BagDialog: React.FC<BagDialogProps> = ({
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/g, '');
-    const orderUrl = `${window.location.origin}${window.location.pathname}#order=v1.${base64}`;
+    const longOrderUrl = `${window.location.origin}${window.location.pathname}#order=v1.${base64}`;
+    const tokenBytes = new Uint8Array(9);
+    window.crypto.getRandomValues(tokenBytes);
+    const shareToken = btoa(String.fromCharCode(...tokenBytes))
+      .replace(/\\+/g, '-')
+      .replace(/\\//g, '_')
+      .replace(/=+$/g, '');
+    const shareRecord = {
+      orderId,
+      date: new Date(shareData.d).toISOString(),
+      shopName,
+      items: snapshot.map((item) => ({
+        id: String(item.id),
+        name: item.name,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+        url: item.url,
+      })),
+      total: subtotal,
+      currencySymbol,
+    };
+    const shortLinkResult = await saveOrderShareToFirestore(shareToken, shareRecord);
+    const orderUrl = shortLinkResult.success
+      ? `${window.location.origin}${window.location.pathname}#order=${shareToken}`
+      : longOrderUrl;
+    const shareWarning = shortLinkResult.success
+      ? ''
+      : 'Short order link could not be saved. Firebase rules need the orderShares access from the latest firestore.rules; a longer link is being used for this order.';
 
     // Log a product snapshot, including photo and product page URL, to Firestore.
     saveOrderToFirestore({
@@ -133,6 +161,7 @@ export const BagDialog: React.FC<BagDialogProps> = ({
       customerName: customerName || undefined,
       notes: deliveryNotes || undefined,
       shareUrl: orderUrl,
+      shareWarning,
       items: snapshot,
       total: subtotal,
       currencyText: (n: number) => formatCurrency(n, currencySymbol),
