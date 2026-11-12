@@ -156,6 +156,7 @@ export default function App() {
   }, []);
 
   const currentCurrency = cleanCurrencySymbol(settings.currencySymbol);
+  const mensRunwayLooks = looks.filter((look) => !look.modelGroup || look.modelGroup === 'men');
   let sharedOrder: any = null;
   if (typeof window !== 'undefined' && window.location.hash.startsWith('#order=')) {
     try {
@@ -239,7 +240,7 @@ export default function App() {
           <main className="flex-1 flex flex-col">
             <div id="men-studio" style={{ scrollMarginTop: 'var(--header-h, 64px)' }}>
               <RunwaySection
-                looks={looks}
+                looks={mensRunwayLooks}
                 products={products}
                 shopName={settings.shopName}
                 shopTagline={settings.shopTagline}
@@ -278,6 +279,7 @@ export default function App() {
               shopName={settings.shopName}
               currencySymbol={currentCurrency}
               products={products}
+              looks={looks}
             />
           </main>
 
