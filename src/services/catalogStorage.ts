@@ -1,3 +1,4 @@
+import { syncCatalogCollectionToFirestore } from './firebase';
 import { DEFAULT_LOOKS, DEFAULT_PRODUCTS } from '../data/defaultCatalog';
 import { Look, Product } from '../types';
 
@@ -34,10 +35,15 @@ export function getStoredProducts(): Product[] {
   return DEFAULT_PRODUCTS;
 }
 
-export function saveProducts(products: Product[]): void {
+export function saveProducts(products: Product[], persistCloud = true): void {
   try {
     const sanitized = products.map(cleanProduct);
     localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(sanitized));
+    if (persistCloud) {
+      void syncCatalogCollectionToFirestore('products', sanitized).then((result) => {
+        if (!result.success) console.error(result.message);
+      });
+    }
     window.dispatchEvent(new CustomEvent('runway:catalog_updated'));
   } catch (e) {
     console.error('Failed to save products to storage', e);
@@ -69,10 +75,15 @@ export function getStoredLooks(): Look[] {
   return DEFAULT_LOOKS;
 }
 
-export function saveLooks(looks: Look[]): void {
+export function saveLooks(looks: Look[], persistCloud = true): void {
   try {
     const sanitized = looks.map(cleanLook);
     localStorage.setItem(STORAGE_KEY_LOOKS, JSON.stringify(sanitized));
+    if (persistCloud) {
+      void syncCatalogCollectionToFirestore('looks', sanitized).then((result) => {
+        if (!result.success) console.error(result.message);
+      });
+    }
     window.dispatchEvent(new CustomEvent('runway:catalog_updated'));
   } catch (e) {
     console.error('Failed to save looks to storage', e);
