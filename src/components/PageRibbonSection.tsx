@@ -62,12 +62,13 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       ['Bomber Cargo', 'hf_20261112_034740_3e3c5ad7-689b-46a2-8e09-c7d36a569b9c.png'],
     ] as const;
     const studioCdn = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/';
-    const western: RibbonModel[] = westernFiles.map(([name, file]) => ({
+    const westernPresets: RibbonModel[] = westernFiles.map(([name, file]) => ({
       id: 'western-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       name,
       image: 'https://images.higgs.ai/?default=1&output=webp&url=' + encodeURIComponent(studioCdn + file) + '&w=1000&q=85',
-    })).concat(availableLooks.filter((look) => look.modelGroup?.toLowerCase() === 'western')
-      .map((look) => ({ id: look.id, name: look.name, image: look.srcset1080 || look.src640 })));
+    }));
+    const western: RibbonModel[] = [...westernPresets, ...availableLooks.filter((look) => look.modelGroup?.toLowerCase() === 'western')
+      .map((look) => ({ id: look.id, name: look.name, image: look.srcset1080 || look.src640 }))];
     const allModels = [...men.slice(0, 4), ...ladies.slice(0, 4), ...western.slice(0, 4)];
     const tops = products.filter((product) => ['top', 'hoodie', 'sweatshirt'].includes(product.category || ''));
     const dresses = products.filter((product) => Boolean(product.virtualStudioLook));
