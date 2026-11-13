@@ -3325,6 +3325,10 @@ button:focus-visible, a:focus-visible {
 .pr-headline span { display: block; white-space: nowrap; will-change: transform; }
 .pr-headline span:first-child { margin-right: 11vw; }
 .pr-headline span:last-child { margin-left: 11vw; }
+.pr-headline span:first-child { animation: pr-headline-left 16s ease-in-out infinite alternate; }
+.pr-headline span:last-child { animation: pr-headline-right 18s ease-in-out infinite alternate; }
+@keyframes pr-headline-left { from { transform: translateX(-3vw); } to { transform: translateX(4vw); } }
+@keyframes pr-headline-right { from { transform: translateX(4vw); } to { transform: translateX(-3vw); } }
 .pr-intro {
   position: absolute;
   z-index: 2;
@@ -3520,5 +3524,5 @@ button:focus-visible, a:focus-visible {
   .pr-progress { right: 14px; bottom: 8px; left: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pr-orbit, .pr-noise::after, .pr-frame::after, .pr-progress::after { animation-duration: 0.01ms; animation-iteration-count: 1; }
+  .pr-orbit, .pr-noise::after, .pr-frame::after, .pr-progress::after, .pr-headline span { animation-duration: 0.01ms; animation-iteration-count: 1; }
 }
