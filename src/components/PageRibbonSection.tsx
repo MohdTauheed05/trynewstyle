@@ -208,7 +208,8 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     dragRef.current = { x: event.clientX, phase: phaseRef.current };
     draggedRef.current = false;
-    event.currentTarget.classList.add('is-dragging');
+    cardHoveredRef.current = true;
+    stageRef.current?.classList.add('is-dragging');
   };
   const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
     if (!dragRef.current) return;
@@ -303,6 +304,10 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
               ref={(node) => { cardRefs.current[PAGES.findIndex((entry) => entry.id === page.id)] = node; }}
               className="pr-card"
               href={'#' + page.id}
+              onPointerDown={(event) => {
+                handlePointerDown(event);
+                event.stopPropagation();
+              }}
               onPointerEnter={() => { cardHoveredRef.current = true; }}
               onPointerLeave={() => { cardHoveredRef.current = false; }}
               onClick={(event) => {
