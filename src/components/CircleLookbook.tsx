@@ -122,10 +122,15 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   };
 
   const handleWheel = (event: React.WheelEvent<HTMLElement>) => {
-    const now = Date.now();
-    if (now - wheelLock.current < 280 || !ringEntries.length) return;
     const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-    if (Math.abs(delta) < 14) return;
+    if (!ringEntries.length || Math.abs(delta) < 1) return;
+
+    // Keep the page from moving while the pointer is over the lookbook, even
+    // during the debounce window or while a trackpad sends small wheel steps.
+    if (event.cancelable) event.preventDefault();
+
+    const now = Date.now();
+    if (now - wheelLock.current < 280 || Math.abs(delta) < 14) return;
     wheelLock.current = now;
     setActiveIndex((current) => (current + (delta > 0 ? 1 : -1) + ringEntries.length) % ringEntries.length);
   };
@@ -191,7 +196,8 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         .cl-center-title{display:none}
         .cl-subtitle{font:10px Arial,sans-serif;letter-spacing:.08em;color:#888;margin-top:12px;line-height:1.4}
         .cl-orbit-model{position:absolute;width:clamp(96px,14vw,190px);height:clamp(220px,39vh,400px);transform-origin:center center;transition:left .75s cubic-bezier(.16,1,.3,1),top .75s cubic-bezier(.16,1,.3,1),transform .75s cubic-bezier(.16,1,.3,1),opacity .5s;cursor:pointer;background:none;border:0;padding:0;display:flex;align-items:flex-end;justify-content:center}
-        .cl-orbit-model img,.cl-orbit-model svg{width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 5px 5px #0002);pointer-events:none}
+        .cl-orbit-model img{width:auto;height:100%;max-width:none;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 5px 5px #0002);pointer-events:none}
+        .cl-orbit-model svg{width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 5px 5px #0002);pointer-events:none}
         .cl-orbit-model span{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font:8px Arial,sans-serif;letter-spacing:.1em;white-space:nowrap;text-transform:uppercase;color:#555;opacity:0;transition:opacity .2s}
         .cl-orbit-model[aria-current=true] span,.cl-orbit-model:hover span{opacity:1}
         .cl-shadow{position:absolute;bottom:8%;left:50%;width:22%;height:2%;border-radius:50%;background:#0002;filter:blur(5px);transform:translateX(-50%);z-index:0}
