@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Look, Product } from '../types';
 
 interface PageRibbonSectionProps {
@@ -7,117 +7,187 @@ interface PageRibbonSectionProps {
   products: Product[];
 }
 
-const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
-const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
-
 export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, looks, products }) => {
-  const trackRef = useRef<HTMLElement | null>(null);
-  const [progress, setProgress] = useState(0);
+  const stageRef = useRef<HTMLElement | null>(null);
+  const cardRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const phaseRef = useRef(0);
+  const wheelRef = useRef(0);
+  const dragRef = useRef<{ x: number; phase: number } | null>(null);
+  const draggedRef = useRef(false);
+
   const menLook = looks.find((look) => !look.modelGroup || look.modelGroup === 'men');
   const ladiesLook = looks.find((look) => look.modelGroup === 'ladies');
   const westernLook = looks.find((look) => look.modelGroup === 'western');
   const fallbackLook = looks[0];
-  const tops = useMemo(() => products.filter((product) => product.category === 'top' || product.category === 'hoodie' || product.category === 'sweatshirt'), [products]);
-  const dresses = useMemo(() => products.filter((product) => product.virtualStudioLook || product.category === 'accessory'), [products]);
-  const pageItems = useMemo(() => [
-    { id: 'men-studio', title: "Men's Studio", kicker: '01 / RUNWAY', image: menLook?.srcset1080 || menLook?.src640 || products[0]?.image, tone: 'sand' },
-    { id: 'offcut-rail-section', title: '3D Hanger T-Shirts', kicker: '02 / CHROME RAIL', image: tops[0]?.image || products[1]?.image || menLook?.src640, tone: 'blue' },
-    { id: 'ladies-section', title: 'Ladies Collection', kicker: '03 / LOOKBOOK', image: ladiesLook?.srcset1080 || ladiesLook?.src640 || fallbackLook?.src640, tone: 'rose' },
-    { id: 'ladies-rail-section', title: '3D Hanger Dresses', kicker: '04 / LADIES RAIL', image: dresses[0]?.image || products[2]?.image || ladiesLook?.src640, tone: 'plum' },
-    { id: 'virtual-studio', title: 'Western Model', kicker: '05 / WESTERN WEAR', image: westernLook?.srcset1080 || westernLook?.src640 || ladiesLook?.src640, tone: 'olive' },
-    { id: 'circle-lookbook', title: 'Circle Model Page', kicker: '06 / CIRCLE LOOKBOOK', image: looks[1]?.srcset1080 || looks[1]?.src640 || fallbackLook?.src640, tone: 'violet' },
-    { id: 'product-collection', title: 'All Products', kicker: '07 / FULL COLLECTION', image: products[0]?.image || fallbackLook?.src640, tone: 'amber' },
-  ], [menLook, ladiesLook, westernLook, fallbackLook, looks, products, tops, dresses]);
+  const tops = useMemo(() => products.filter((product) =>
+    product.category === 'top' || product.category === 'hoodie' || product.category === 'sweatshirt'
+  ), [products]);
+  const dresses = useMemo(() => products.filter((product) =>
+    product.virtualStudioLook || product.category === 'accessory'
+  ), [products]);
+
+  const pages = useMemo(() => [
+    { id: 'men-studio', title: "Men's Studio", kicker: '01 / RUNWAY' },
+    { id: 'offcut-rail-section', title: '3D Hanger T-Shirts', kicker: '02 / CHROME RAIL' },
+    { id: 'ladies-section', title: 'Ladies Collection', kicker: '03 / LOOKBOOK' },
+    { id: 'ladies-rail-section', title: '3D Hanger Dresses', kicker: '04 / LADIES RAIL' },
+    { id: 'virtual-studio', title: 'Western Model', kicker: '05 / WESTERN WEAR' },
+    { id: 'circle-lookbook', title: 'Circle Model Page', kicker: '06 / CIRCLE LOOKBOOK' },
+    { id: 'product-collection', title: 'All Products', kicker: '07 / FULL COLLECTION' },
+  ], []);
+
+  const pageContext = useMemo(() => ({
+    menLook: menLook?.srcset1080 || menLook?.src640 || products[0]?.image,
+    tshirt: tops[0]?.image || products[1]?.image || menLook?.src640,
+    ladies: ladiesLook?.srcset1080 || ladiesLook?.src640 || fallbackLook?.src640,
+    dress: dresses[0]?.image || products[2]?.image || ladiesLook?.src640,
+    western: westernLook?.srcset1080 || westernLook?.src640 || ladiesLook?.src640,
+    circle: looks[1]?.srcset1080 || looks[1]?.src640 || fallbackLook?.src640,
+    products: products[0]?.image || fallbackLook?.src640,
+  }), [menLook, tops, products, ladiesLook, fallbackLook, dresses, westernLook, looks]);
 
   useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
     let frame = 0;
-    const measure = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const track = trackRef.current;
-        if (!track) return;
-        const rect = track.getBoundingClientRect();
-        const range = Math.max(1, rect.height - window.innerHeight);
-        setProgress(clamp(-rect.top / range));
+    let previousTime = 0;
+    let visible = true;
+    let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const updateMotionPreference = () => {
+      reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    };
+    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', updateMotionPreference);
+    const observer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) previousTime = 0;
+    }, { threshold: 0.05 });
+    observer?.observe(stage);
+
+    const animate = (time: number) => {
+      frame = requestAnimationFrame(animate);
+      if (!visible || document.hidden) {
+        previousTime = time;
+        return;
+      }
+      const delta = previousTime ? Math.min(48, time - previousTime) : 16;
+      previousTime = time;
+      const width = stage.clientWidth || window.innerWidth;
+      const height = stage.clientHeight || window.innerHeight;
+      const step = Math.min(width * (width < 680 ? 0.34 : 0.21), 380);
+      if (!reducedMotion && !dragRef.current) phaseRef.current += delta * 0.00028;
+      phaseRef.current += wheelRef.current;
+      wheelRef.current *= 0.86;
+      if (Math.abs(wheelRef.current) < 0.0001) wheelRef.current = 0;
+
+      const count = pages.length;
+      cardRefs.current.forEach((card, index) => {
+        if (!card) return;
+        const half = count / 2;
+        const relative = ((((index - phaseRef.current + half) % count) + count) % count) - half;
+        const distance = Math.abs(relative);
+        const x = width / 2 + relative * step;
+        const float = Math.sin(time * 0.0015 + index * 1.37) * 9;
+        const y = height * 0.55 + Math.sin(relative * 0.72) * Math.min(62, height * 0.08) + float;
+        const z = -Math.min(distance, 4) * 82;
+        const rotateY = relative * -14;
+        const rotateZ = Math.sin(relative * 0.6) * -2.8 + Math.sin(time * 0.001 + index) * 0.4;
+        const scale = 1 - Math.min(distance, 4) * 0.085;
+        const opacity = Math.max(0.36, 1 - Math.max(0, distance - 2.4) * 0.23);
+        card.style.transform = 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px) translate(-50%,-50%) rotateY(' + rotateY + 'deg) rotateZ(' + rotateZ + 'deg) scale(' + scale + ')';
+        card.style.zIndex = String(100 - Math.round(distance * 10));
+        card.style.opacity = String(opacity);
       });
     };
-    measure();
-    window.addEventListener('scroll', measure, { passive: true });
-    window.addEventListener('resize', measure);
+    frame = requestAnimationFrame(animate);
+
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', measure);
-      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+      window.matchMedia('(prefers-reduced-motion: reduce)').removeEventListener?.('change', updateMotionPreference);
     };
-  }, []);
+  }, [pages.length]);
 
-  const columns = typeof window !== 'undefined' && window.innerWidth < 680 ? 2 : 3;
-  const stageWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
-  const headerHeight = typeof window !== 'undefined' ? (Number.parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64) : 64;
-  const stageHeight = typeof window !== 'undefined' ? Math.max(400, window.innerHeight - headerHeight) : 800;
-  const layoutProgress = clamp((progress - 0.22) / 0.66);
-  const openPage = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-    event.preventDefault();
-    const target = document.getElementById(id);
-    if (!target) return;
-    const headerHeight = Number.parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64;
-    const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
-    window.scrollTo({ top, behavior: 'smooth' });
+  const handleWheel = (event: React.WheelEvent<HTMLElement>) => {
+    wheelRef.current += (event.deltaY || event.deltaX) / 380 * 0.34;
   };
+  const handlePointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest('a')) return;
+    dragRef.current = { x: event.clientX, phase: phaseRef.current };
+    draggedRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.classList.add('is-dragging');
+  };
+  const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (!dragRef.current) return;
+    const distance = event.clientX - dragRef.current.x;
+    if (Math.abs(distance) > 5) draggedRef.current = true;
+    const stageWidth = stageRef.current?.clientWidth || window.innerWidth;
+    const step = Math.min(stageWidth * (stageWidth < 680 ? 0.34 : 0.21), 380);
+    phaseRef.current = dragRef.current.phase - distance / step;
+  };
+  const handlePointerUp = (event: React.PointerEvent<HTMLElement>) => {
+    dragRef.current = null;
+    event.currentTarget.classList.remove('is-dragging');
+    window.setTimeout(() => { draggedRef.current = false; }, 0);
+  };
+  const activeIndex = ((Math.round(phaseRef.current) % pages.length) + pages.length) % pages.length;
 
   return (
-    <section className="page-ribbon-track" id="page-ribbon" ref={trackRef} aria-label={shopName + ' page ribbon'}>
-      <div className="page-ribbon-stage">
-        <div className="pr-topline"><span><i /> {shopName.toUpperCase()} · STYLE INDEX</span><span>SCROLL TO EXPLORE</span></div>
-        <div className="pr-headline" aria-hidden="true">
-          <span style={{ transform: 'translateX(' + (-progress * 18) + 'vw)' }}>STYLE IN</span>
-          <span style={{ transform: 'translateX(' + (progress * 18) + 'vw)' }}>MOTION</span>
-        </div>
-        <p className="pr-intro">Explore every corner of the collection.</p>
-        <div className="pr-orbit" aria-hidden="true" />
+    <section className="page-ribbon" id="page-ribbon" aria-label={shopName + ' page previews'}>
+      <div className="pr-stage" ref={stageRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+        <div className="pr-noise" aria-hidden="true" />
+        <header className="pr-topline">
+          <span><i /> {shopName.toUpperCase()} · PAGE INDEX</span>
+          <span>DRAG OR SCROLL TO EXPLORE</span>
+        </header>
+        <div className="pr-headline" aria-hidden="true"><span>THE STYLE</span><span>UNIVERSE</span></div>
+        <p className="pr-intro">Every page. Every look. One collection.</p>
+        <div className="pr-orbit pr-orbit-one" aria-hidden="true" />
+        <div className="pr-orbit pr-orbit-two" aria-hidden="true" />
         <div className="pr-cards">
-          {pageItems.map((item, index) => {
-            const spread = index - (pageItems.length - 1) / 2;
-            const mobile = stageWidth < 680;
-            const startX = stageWidth / 2 + spread * stageWidth * (mobile ? 0.19 : 0.145);
-            const startY = stageHeight * (0.59 + Math.cos((index / (pageItems.length - 1)) * Math.PI * 2) * 0.055);
-            const startZ = -Math.abs(spread) * (mobile ? 38 : 55);
-            const startRotate = -spread * 9;
-            const col = index % columns;
-            const row = Math.floor(index / columns);
-            const rows = Math.ceil(pageItems.length / columns);
-            const gridX = stageWidth * ((col + 0.5) / columns);
-            const gridY = stageHeight * (0.34 + (row + 0.5) * (0.56 / rows));
-            const x = mix(startX, gridX, layoutProgress);
-            const y = mix(startY, gridY, layoutProgress);
-            const z = mix(startZ, 0, layoutProgress);
-            const rotate = mix(startRotate, 0, layoutProgress);
-            const scale = mix(mobile ? 0.92 : 0.84, 1, layoutProgress);
-            const active = Math.abs(spread) < 0.5;
-            return (
-              <a
-                key={item.id}
-                className={'pr-card pr-tone-' + item.tone}
-                href={'#' + item.id}
-                onClick={(event) => openPage(event, item.id)}
-                aria-label={'Open ' + item.title}
-                style={{
-                  transform: 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px) translate(-50%,-50%) rotateY(' + rotate + 'deg) scale(' + scale + ')',
-                  zIndex: 20 - Math.round(Math.abs(spread) * (1 - layoutProgress) * 2) + (active ? 2 : 0),
-                }}
-              >
-                <div className="pr-card-image">
-                  {item.image && <img src={item.image} alt="" loading="lazy" />}
-                  <span className="pr-card-glow" />
-                  <span className="pr-card-open" aria-hidden="true">↗</span>
-                </div>
-                <div className="pr-card-copy"><span>{item.kicker}</span><strong>{item.title}</strong></div>
-              </a>
-            );
-          })}
+          {pages.map((page, index) => (
+            <a
+              key={page.id}
+              ref={(node) => { cardRefs.current[index] = node; }}
+              className="pr-card"
+              href={'#' + page.id}
+              onClick={(event) => {
+                if (draggedRef.current) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  return;
+                }
+                event.preventDefault();
+                const target = document.getElementById(page.id);
+                if (!target) return;
+                const headerHeight = Number.parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64;
+                window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - headerHeight - 8, behavior: 'smooth' });
+              }}
+              aria-label={'Open ' + page.title}
+            >
+              <div className="pr-browser-bar">
+                <span className="pr-window-dots"><i /><i /><i /></span>
+                <span className="pr-address">{page.title}</span>
+                <span className="pr-browser-icons">⌕　◻</span>
+              </div>
+              <div className="pr-frame">
+                <iframe
+                  src={'/?pagePreview=' + encodeURIComponent(page.id)}
+                  title={page.title + ' page preview'}
+                  loading="lazy"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="pr-card-copy"><span>{page.kicker}</span><strong>{page.title}</strong><b aria-hidden="true">↗</b></div>
+            </a>
+          ))}
         </div>
-        <div className="pr-caption"><span>COLLECTION / LOOKBOOK / STUDIO</span><span>{String(Math.min(7, Math.floor(progress * 7) + 1)).padStart(2, '0')} — 07</span></div>
-        <div className="pr-progress"><span style={{ transform: 'scaleX(' + progress + ')' }} /></div>
+        <div className="pr-caption">
+          <span>CONTINUOUS PAGE TOUR</span>
+          <span>{String(activeIndex + 1).padStart(2, '0')} / {String(pages.length).padStart(2, '0')}</span>
+        </div>
+        <div className="pr-progress"><span /></div>
       </div>
     </section>
   );
