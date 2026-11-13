@@ -164,7 +164,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
     if (!dragRef.current) return;
     const distance = event.clientX - dragRef.current.x;
-    if (Math.abs(distance) > 6) draggedRef.current = true;
+    if (Math.abs(distance) > 12) draggedRef.current = true;
     const width = stageRef.current?.clientWidth || window.innerWidth;
     const step = Math.min(width * (width < 680 ? 0.34 : 0.21), width < 680 ? 150 : 380);
     phaseRef.current = dragRef.current.phase - distance / step;
@@ -242,7 +242,18 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
               className="pr-card"
               href={'#' + page.id}
               onClick={(event) => {
-                if (draggedRef.current) event.preventDefault();
+                if (draggedRef.current) {
+                  event.preventDefault();
+                  return;
+                }
+                event.preventDefault();
+                const target = document.getElementById(page.id);
+                if (!target) return;
+                const hash = '#' + page.id;
+                if (window.location.hash !== hash) window.history.pushState(null, '', hash);
+                const headerHeight = Number.parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64;
+                const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
+                window.scrollTo({ top, behavior: 'smooth' });
               }}
               aria-label={'Open ' + page.title}
               draggable={false}
