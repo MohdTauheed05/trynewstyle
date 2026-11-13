@@ -4,6 +4,42 @@ import { addBagItem } from '../services/bagStorage';
 import { formatCurrency } from '../services/storeSettings';
 import { ReelItem } from '../services/reelStorage';
 
+type ReelPlayback =
+  | { kind: 'file'; src: string }
+  | { kind: 'embed'; src: string }
+  | { kind: 'link'; src: string };
+
+function resolveReelPlayback(rawUrl: string): ReelPlayback {
+  try {
+    const url = new URL(rawUrl);
+    const host = url.hostname.replace(/^www\\./, '').toLowerCase();
+    const path = url.pathname;
+
+    if (host === 'youtu.be' || host.endsWith('youtube.com')) {
+      const id = host === 'youtu.be' ? path.split('/').filter(Boolean)[0] : (url.searchParams.get('v') || path.match(/\\/(?:embed|shorts|live)\\/([^/?]+)/)?.[1]);
+      if (id) return { kind: 'embed', src: 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(id) + '?autoplay=1&mute=1&playsinline=1&rel=0' };
+    }
+    if (host === 'instagram.com') {
+      const match = path.match(/\\/(?:reel|reels|p|tv)\\/([^/?]+)/);
+      if (match) return { kind: 'embed', src: 'https://www.instagram.com/reel/' + encodeURIComponent(match[1]) + '/embed/' };
+    }
+    if (host === 'tiktok.com') {
+      const id = path.match(/\\/video\\/(\\d+)/)?.[1];
+      if (id) return { kind: 'embed', src: 'https://www.tiktok.com/player/v1/' + id + '?autoplay=1&loop=1' };
+    }
+    if (host.endsWith('facebook.com') || host === 'fb.watch') {
+      return { kind: 'embed', src: 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url.href) + '&show_text=0&autoplay=1' };
+    }
+
+    if (/\\.(mp4|m4v|webm|ogv)(?:$|[?#])/i.test(url.href) || /cloudinary\\.com\\/[^/]+\\/video\\/upload\\//i.test(url.href)) {
+      return { kind: 'file', src: url.href };
+    }
+    return { kind: 'link', src: url.href };
+  } catch {
+    return { kind: 'link', src: rawUrl };
+  }
+}
+
 interface ReelCoverflowProps {
   reels: ReelItem[];
   products: Product[];
@@ -13,12 +49,15 @@ interface ReelCoverflowProps {
 
 export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, shopName, currencySymbol }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [videoFailed, setVideoFailed] = useState(false);
   const [dragStart, setDragStart] = useState<number | null>(null);
   const wheelAt = useRef(0);
   const active = reels.length ? reels[((activeIndex % reels.length) + reels.length) % reels.length] : null;
+  const playback = active ? resolveReelPlayback(active.videoUrl) : null;
   const activeProducts = useMemo(() => active ? active.productIds.map((id) => products.find((item) => item.id === id)).filter((item): item is Product => Boolean(item)) : [], [active, products]);
 
   useEffect(() => { setActiveIndex(0); }, [reels.length]);
+  useEffect(() => { setVideoFailed(false); }, [active?.videoUrl]);
   const shift = (amount: number) => {
     if (reels.length < 2) return;
     setActiveIndex((current) => (current + amount + reels.length) % reels.length);
@@ -64,7 +103,7 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
         .reel-coverflow *{box-sizing:border-box}.rf-head{text-align:center;max-width:720px;margin:0 auto 28px}.rf-eyebrow{font:600 10px Arial,sans-serif;letter-spacing:.24em;color:#9daeff;text-transform:uppercase}.rf-head h2{font:500 clamp(36px,6vw,68px)/.98 Georgia,serif;letter-spacing:-.04em;margin:14px 0 10px}.rf-head p{font:14px/1.6 Arial,sans-serif;color:#aeb5c9;margin:0}
         .rf-stage{height:490px;max-width:1180px;margin:0 auto;position:relative;display:flex;align-items:center;justify-content:center;perspective:1300px;touch-action:pan-y;cursor:grab;user-select:none}.rf-stage.is-dragging{cursor:grabbing}
         .rf-card{position:absolute;left:50%;top:50%;width:clamp(180px,20vw,252px);height:438px;transform-origin:center center;border:1px solid #5369b5;border-radius:19px;overflow:hidden;background:#10172f;box-shadow:0 18px 55px #0008;transition:transform .6s cubic-bezier(.2,.75,.2,1),opacity .5s,filter .5s;cursor:pointer}
-        .rf-card video,.rf-card img{width:100%;height:100%;object-fit:cover;display:block;background:linear-gradient(145deg,#cbb8a3,#766b60)}
+        .rf-card video,.rf-card img,.rf-card iframe{width:100%;height:100%;object-fit:cover;display:block;background:linear-gradient(145deg,#cbb8a3,#766b60);border:0}.rf-open-link{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 18px;border-radius:99px;background:#eefaff;color:#10172c;font:600 11px Arial,sans-serif;text-decoration:none;white-space:nowrap}.rf-no-poster{width:100%;height:100%;background:linear-gradient(145deg,#27366b,#11182d)}
         .rf-card.is-active{border-color:#58ddff;box-shadow:0 0 0 1px #58ddff55,0 0 40px #3178ff55,0 20px 60px #0009;cursor:default}
         .rf-card-shade{position:absolute;inset:45% 0 0;background:linear-gradient(transparent,#060916e8);pointer-events:none}.rf-card-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;border:1px solid #ffffffa8;border-radius:50%;display:grid;place-items:center;color:#fff;background:#05081777;font-size:21px}
         .rf-card-title{position:absolute;left:20px;right:16px;bottom:19px;font:600 12px Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase}.rf-card-index{position:absolute;left:18px;top:17px;border-radius:99px;padding:7px 10px;background:#070b1bcc;color:#dce6ff;font:9px Arial,sans-serif;letter-spacing:.1em}
@@ -89,7 +128,11 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
             const scale = Math.max(.68, 1 - abs * (mobile ? .14 : .13));
             const opacity = Math.max(.28, 1 - abs * .22);
             return <div key={reel.id} role={offset === 0 ? undefined : 'button'} tabIndex={offset === 0 ? -1 : 0} className={'rf-card' + (offset === 0 ? ' is-active' : '')} aria-label={offset === 0 ? undefined : 'Show ' + reel.title} style={{transform:'translate(-50%,-50%) translateX(' + x + 'px) translateY(' + y + 'px) rotateY(' + rotate + 'deg) scale(' + scale + ')',zIndex:10-abs,opacity}} onClick={() => { if (offset) shift(offset); }} onKeyDown={(event) => { if (offset && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); shift(offset); } }}>
-              {offset === 0 ? <video src={reel.videoUrl} poster={reel.posterUrl || undefined} autoPlay muted loop playsInline controls /> : reel.posterUrl ? <img src={reel.posterUrl} alt="" loading="lazy" /> : <div />}
+              {offset === 0 && playback?.kind === 'file' && !videoFailed
+                ? <video src={playback.src} poster={reel.posterUrl || undefined} autoPlay muted loop playsInline controls onError={() => setVideoFailed(true)} />
+                : reel.posterUrl ? <img src={reel.posterUrl} alt="" loading="lazy" /> : <div className="rf-no-poster" />}
+              {offset === 0 && playback?.kind === 'embed' && <iframe title={reel.title} src={playback.src} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="lazy" />}
+              {offset === 0 && (playback?.kind === 'link' || videoFailed) && <a className="rf-open-link" href={reel.videoUrl} target="_blank" rel="noreferrer">Open reel ↗</a>}
               <span className="rf-card-shade"/><span className="rf-card-index">REEL {String(index + 1).padStart(2,'0')}</span>
               {offset !== 0 && <span className="rf-card-play" aria-hidden="true">▶</span>}<span className="rf-card-title">{reel.title}</span>
             </div>;
