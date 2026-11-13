@@ -245,13 +245,13 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
         ) : page.mode === 'circle' ? (
           <div className="pr-shot-circle">
             <i className="pr-shot-orbit" aria-hidden="true" />
-            {modelImages.map((look, index) => { const angle = (index / Math.max(1, modelImages.length)) * Math.PI * 2 - Math.PI / 2; return modelImage(look, '', { left: (50 + Math.cos(angle) * 38) + '%', top: (50 + Math.sin(angle) * 37) + '%' }); })}
+            {modelImages.map((look, index) => { const angle = (index / Math.max(1, modelImages.length)) * Math.PI * 2 - Math.PI / 2; return modelImage(look, '', { position: 'absolute', display: 'block', zIndex: 2, left: (50 + Math.cos(angle) * 38) + '%', top: (50 + Math.sin(angle) * 37) + '%', width: '19%', height: '39%', objectFit: 'contain', objectPosition: 'center bottom', transform: 'translate(-50%,-50%)' }); })}
             <span>STAY OUT OF THE LOOP</span>
           </div>
         ) : (
           <div className="pr-shot-runway">
             <div className="pr-shot-models">
-              {modelImages.map((look, index) => modelImage(look, index === 0 ? 'is-lead' : ''))}
+              {modelImages.map((look, index) => modelImage(look, index === 0 ? 'is-lead' : '', { position: 'absolute', display: 'block', bottom: 0, left: index === 0 ? '35%' : [ '5%', '25%', '39%', '60%', '76%' ][index] || '5%', zIndex: index === 0 ? 3 : 1, width: index === 0 ? '31%' : '23%', height: index === 0 ? '98%' : [ '76%', '68%', '94%', '72%', '84%' ][index] || '76%', objectFit: 'contain', objectPosition: 'center bottom' }))}
               {!modelImages.length && <div className="pr-shot-empty">Add models in Admin</div>}
             </div>
             {page.mode !== 'western' && productImages.length > 0 && (
