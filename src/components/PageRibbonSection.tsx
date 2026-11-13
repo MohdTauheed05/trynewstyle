@@ -248,7 +248,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
         ) : (
           <div className="pr-shot-runway">
             <div className="pr-shot-models">
-              {modelImages.map((look, index) => <img key={look.id} className={index === 0 ? 'is-lead' : ''} src={cardImage(look)} alt="" loading="lazy" />)}
+              {modelImages.map((look, index) => <img key={look.id} className={index === 0 ? 'is-lead' : ''} src={look.image} alt={look.name} loading="eager" decoding="async" />)}
               {!modelImages.length && <div className="pr-shot-empty">Add models in Admin</div>}
             </div>
             {page.mode !== 'western' && productImages.length > 0 && (
