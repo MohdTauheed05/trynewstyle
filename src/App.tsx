@@ -10,7 +10,7 @@ import { LadiesRailSection } from './components/LadiesRailSection';
 import { VirtualStudio } from './components/VirtualStudio';
 import { CircleLookbook } from './components/CircleLookbook';
 import { ProductSpotlightCarousel } from './components/ProductSpotlightCarousel';
-import { ReelCoverflow } from './components/ReelCoverflow';
+import { PageRibbonSection } from './components/PageRibbonSection';
 import { Look, Product } from './types';
 import { getStoredLooks, getStoredProducts, saveLooks, saveProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
@@ -19,7 +19,7 @@ import { fetchCatalogFromFirestore, fetchOrderShareFromFirestore, fetchSharedSec
 import { getStoredRailItems, saveRailItems } from './services/railStorage';
 import { getStoredLadiesPieces, getStoredLadiesSettings, saveLadiesPieces, saveLadiesSettings } from './services/ladiesStorage';
 import { getStoredLadiesRailItems, saveLadiesRailItems } from './services/ladiesRailStorage';
-import { getStoredReels, saveReels } from './services/reelStorage';
+
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'runway' | 'admin'>(() => {
@@ -37,7 +37,6 @@ export default function App() {
   const [looks, setLooks] = useState<Look[]>(() => getStoredLooks());
   const [products, setProducts] = useState<Product[]>(() => getStoredProducts());
   const [cartCount, setCartCount] = useState<number>(() => getBagCount());
-  const [reels, setReels] = useState(() => getStoredReels());
   const [isBagOpen, setIsBagOpen] = useState(false);
   const [linkedOrder, setLinkedOrder] = useState<any>(null);
   const [isResolvingOrder, setIsResolvingOrder] = useState(() =>
@@ -95,18 +94,15 @@ export default function App() {
     const handleSettingsUpdate = () => {
       setSettings(getStoredSettings());
     };
-    const handleReelsUpdate = () => setReels(getStoredReels());
 
     window.addEventListener('runway:catalog_updated', handleCatalogUpdate);
     window.addEventListener('runway:bag_updated', handleBagUpdate);
     window.addEventListener('runway:settings_updated', handleSettingsUpdate);
-    window.addEventListener('runway:reels_updated', handleReelsUpdate);
 
     return () => {
       window.removeEventListener('runway:catalog_updated', handleCatalogUpdate);
       window.removeEventListener('runway:bag_updated', handleBagUpdate);
       window.removeEventListener('runway:settings_updated', handleSettingsUpdate);
-      window.removeEventListener('runway:reels_updated', handleReelsUpdate);
     };
   }, []);
 
@@ -131,13 +127,12 @@ export default function App() {
   useEffect(() => {
     let active = true;
     const loadSharedStoreData = async () => {
-      const [cloudSettings, catalog, rail, ladies, ladiesRail, reelSection] = await Promise.all([
+      const [cloudSettings, catalog, rail, ladies, ladiesRail] = await Promise.all([
         fetchStoreSettingsFromFirestore(),
         fetchCatalogFromFirestore(),
         fetchSharedSectionFromFirestore<{ items?: ReturnType<typeof getStoredRailItems> }>('shared_rail'),
         fetchSharedSectionFromFirestore<{ pieces?: ReturnType<typeof getStoredLadiesPieces>; settings?: ReturnType<typeof getStoredLadiesSettings> }>('shared_ladies'),
         fetchSharedSectionFromFirestore<{ items?: ReturnType<typeof getStoredLadiesRailItems> }>('shared_ladies_rail'),
-        fetchSharedSectionFromFirestore<{ items?: ReturnType<typeof getStoredReels> }>('shared_reels'),
       ]);
       if (!active) return;
       if (cloudSettings) {
@@ -157,7 +152,6 @@ export default function App() {
       if (ladies?.pieces) saveLadiesPieces(ladies.pieces, false);
       if (ladies?.settings) saveLadiesSettings(ladies.settings, false);
       if (ladiesRail?.items) saveLadiesRailItems(ladiesRail.items, false);
-      if (reelSection?.items) { saveReels(reelSection.items, false); setReels(reelSection.items); }
     };
     void loadSharedStoreData().catch((error) => console.error('Failed to load shared Firestore data:', error));
     return () => {
@@ -299,13 +293,15 @@ export default function App() {
               products={products}
             />
 
-            <ProductSpotlightCarousel
-              shopName={settings.shopName}
-              currencySymbol={currentCurrency}
-              products={products}
-            />
+            <div id="product-collection" style={{ scrollMarginTop: 'var(--header-h, 64px)' }}>
+              <ProductSpotlightCarousel
+                shopName={settings.shopName}
+                currencySymbol={currentCurrency}
+                products={products}
+              />
+            </div>
 
-            <ReelCoverflow reels={reels} products={products} shopName={settings.shopName} currencySymbol={currentCurrency} />
+            <PageRibbonSection shopName={settings.shopName} looks={looks} products={products} />
           </main>
 
           <BagDialog
