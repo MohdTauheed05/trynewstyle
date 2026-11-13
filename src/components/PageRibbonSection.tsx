@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Look, Product } from '../types';
+import { DEFAULT_LOOKS } from '../data/defaultCatalog';
+import { LADIES_LOOK_BOUNDS, LADIES_MODEL_Y0, LADIES_MODEL_Y1, LADIES_MODELS_SHEET } from '../services/ladiesStorage';
 
 interface PageRibbonSectionProps {
   shopName: string;
@@ -7,12 +9,14 @@ interface PageRibbonSectionProps {
   products: Product[];
 }
 
+type RibbonModel = { id: string; name: string; image: string };
+
 type PageItem = {
   id: string;
   title: string;
   kicker: string;
   mode: 'runway' | 'rail' | 'ladies' | 'western' | 'circle' | 'products';
-  models?: Look[];
+  models?: RibbonModel[];
   products?: Product[];
 };
 
@@ -37,16 +41,44 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const draggedRef = useRef(false);
 
   const pages = useMemo<PageItem[]>(() => {
-    const men = looks.filter((look) => !look.modelGroup || look.modelGroup === 'men');
-    const ladies = looks.filter((look) => look.modelGroup === 'ladies');
-    const western = looks.filter((look) => look.modelGroup === 'western');
-    const models = [...men, ...ladies, ...western];
+    const availableLooks = looks.length ? looks : DEFAULT_LOOKS;
+    const men: RibbonModel[] = availableLooks
+      .filter((look) => !look.modelGroup || look.modelGroup.toLowerCase() === 'men')
+      .map((look) => ({ id: look.id, name: look.name, image: look.srcset1080 || look.src640 }));
+    const ladies: RibbonModel[] = LADIES_LOOK_BOUNDS.map(([x0, x1], index) => {
+      const width = x1 - x0;
+      const height = LADIES_MODEL_Y1 - LADIES_MODEL_Y0;
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + x0 + ' ' + LADIES_MODEL_Y0 + ' ' + width + ' ' + height + '"><image href="' + LADIES_MODELS_SHEET.replaceAll('&', '&amp;') + '" width="960" height="540"/></svg>';
+      return {
+        id: 'ladies-model-' + (index + 1),
+        name: 'Ladies Look ' + String(index + 1).padStart(2, '0'),
+        image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+      };
+    });
+    const westernFiles = [
+      ['Denim Maxi', 'hf_20261112_034542_a6430ecf-9862-412c-8ef6-5745115bd78c.png'],
+      ['Cloud Set', 'hf_20261112_034738_73282737-acc8-41e9-a822-96c663e27b6c.png'],
+      ['Library Knit', 'hf_20261112_034742_9a8a92fd-79ae-4163-9ffa-14ae2a68717f.png'],
+      ['Lilac Run', 'hf_20261112_034735_4e352e03-ad2b-44d1-9fcf-4b5b9454dc55.png'],
+      ['Satin Night', 'hf_20261112_034738_aeb8ea57-6399-4f3c-b54a-4a57d0bd971e.png'],
+      ['Night Suit', 'hf_20261112_034736_aace5c5f-8c14-4b00-83ba-744dbad2e337.png'],
+      ['Sage Slip', 'hf_20261112_034735_3d9fb69e-b4e0-49f7-a2d4-e592bd616c27.png'],
+      ['Bomber Cargo', 'hf_20261112_034740_3e3c5ad7-689b-46a2-8e09-c7d36a569b9c.png'],
+    ] as const;
+    const studioCdn = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/';
+    const western: RibbonModel[] = westernFiles.map(([name, file]) => ({
+      id: 'western-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      name,
+      image: 'https://images.higgs.ai/?default=1&output=webp&url=' + encodeURIComponent(studioCdn + file) + '&w=1000&q=85',
+    })).concat(availableLooks.filter((look) => look.modelGroup?.toLowerCase() === 'western')
+      .map((look) => ({ id: look.id, name: look.name, image: look.srcset1080 || look.src640 })));
+    const allModels = [...men, ...ladies, ...western];
     const tops = products.filter((product) => ['top', 'hoodie', 'sweatshirt'].includes(product.category || ''));
     const dresses = products.filter((product) => Boolean(product.virtualStudioLook));
     const matchingProducts = (look?: Look) => look
       ? products.filter((product) => look.productIds.includes(product.id))
       : [];
-    const make = (index: number, modelSet: Look[], productSet: Product[] = []): PageItem => ({
+    const make = (index: number, modelSet: RibbonModel[], productSet: Product[] = []): PageItem => ({
       ...PAGES[index],
       mode: PAGES[index].mode,
       models: modelSet,
@@ -54,12 +86,12 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     });
 
     return [
-      make(0, men, matchingProducts(men[0])),
+      make(0, men, matchingProducts(availableLooks.find((look) => !look.modelGroup || look.modelGroup.toLowerCase() === 'men'))),
       make(1, men, tops.length ? tops : products.slice(0, 5)),
-      make(2, ladies, matchingProducts(ladies[0])),
+      make(2, ladies),
       make(3, ladies, dresses.length ? dresses : tops),
-      make(4, western.length ? western : ladies, matchingProducts(western[0])),
-      make(5, models.slice(0, 12), products.slice(0, 3)),
+      make(4, western),
+      make(5, allModels.slice(0, 12), products.slice(0, 3)),
       make(6, [], products),
     ];
   }, [looks, products]);
@@ -185,12 +217,10 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     window.setTimeout(() => { draggedRef.current = false; }, 100);
   };
 
-  const cardImage = (look?: Look, product?: Product) => look?.src640 || look?.srcset1080 || product?.image || '';
   const renderShot = (page: PageItem) => {
     const modelList = page.models || [];
     const productList = page.products || [];
-    const leadModel = modelList[0];
-    const modelImages = modelList.slice(0, page.mode === 'circle' ? 12 : 5);
+        const modelImages = modelList.slice(0, page.mode === 'circle' ? 12 : 5);
     const productImages = productList.slice(0, page.mode === 'products' ? 9 : 3);
 
     return (
@@ -212,13 +242,13 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
         ) : page.mode === 'circle' ? (
           <div className="pr-shot-circle">
             <i className="pr-shot-orbit" aria-hidden="true" />
-            {modelImages.map((look, index) => { const angle = (index / Math.max(1, modelImages.length)) * Math.PI * 2 - Math.PI / 2; return <img key={look.id} src={cardImage(look)} alt="" loading="lazy" style={{ left: (50 + Math.cos(angle) * 38) + '%', top: (50 + Math.sin(angle) * 37) + '%' }} />; })}
+            {modelImages.map((look, index) => { const angle = (index / Math.max(1, modelImages.length)) * Math.PI * 2 - Math.PI / 2; return <img key={look.id} src={look.image} alt={look.name} loading="eager" decoding="async" style={{ left: (50 + Math.cos(angle) * 38) + '%', top: (50 + Math.sin(angle) * 37) + '%' }} />; })}
             <span>STAY OUT OF THE LOOP</span>
           </div>
         ) : (
           <div className="pr-shot-runway">
             <div className="pr-shot-models">
-              {modelImages.map((look, index) => <img key={look.id} className={look.id === leadModel?.id ? 'is-lead' : ''} src={cardImage(look)} alt="" loading="lazy" />)}
+              {modelImages.map((look, index) => <img key={look.id} className={index === 0 ? 'is-lead' : ''} src={cardImage(look)} alt="" loading="lazy" />)}
               {!modelImages.length && <div className="pr-shot-empty">Add models in Admin</div>}
             </div>
             {page.mode !== 'western' && productImages.length > 0 && (
