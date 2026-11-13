@@ -7,7 +7,8 @@ import { ReelItem } from '../services/reelStorage';
 type ReelPlayback =
   | { kind: 'file'; src: string }
   | { kind: 'embed'; src: string }
-  | { kind: 'link'; src: string };
+  | { kind: 'link'; src: string }
+  | { kind: 'resolve'; src: string };
 
 function resolveReelPlayback(rawUrl: string): ReelPlayback {
   try {
@@ -23,9 +24,10 @@ function resolveReelPlayback(rawUrl: string): ReelPlayback {
       const match = path.match(/\/(?:reel|reels|p|tv)\/([^/?]+)/);
       if (match) return { kind: 'embed', src: 'https://www.instagram.com/reel/' + encodeURIComponent(match[1]) + '/embed/' };
     }
-    if (host === 'tiktok.com') {
+    if (host.endsWith('tiktok.com')) {
       const id = path.match(/\/video\/(\d+)/)?.[1];
-      if (id) return { kind: 'embed', src: 'https://www.tiktok.com/player/v1/' + id + '?autoplay=1&loop=1' };
+      if (id) return { kind: 'embed', src: 'https://www.tiktok.com/player/v1/' + id + '?music_info=1&description=1' };
+      return { kind: 'resolve', src: url.href };
     }
     if (host.endsWith('facebook.com') || host === 'fb.watch') {
       return { kind: 'embed', src: 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url.href) + '&show_text=0&autoplay=1' };
@@ -50,14 +52,40 @@ interface ReelCoverflowProps {
 export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, shopName, currencySymbol }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [startedReelId, setStartedReelId] = useState<string | null>(null);
+  const [resolvedTikTok, setResolvedTikTok] = useState<{ reelId: string; src: string } | null>(null);
+  const [tiktokResolveError, setTiktokResolveError] = useState('');
   const [dragStart, setDragStart] = useState<number | null>(null);
   const wheelAt = useRef(0);
   const active = reels.length ? reels[((activeIndex % reels.length) + reels.length) % reels.length] : null;
-  const playback = active ? resolveReelPlayback(active.videoUrl) : null;
+  const rawPlayback = active ? resolveReelPlayback(active.videoUrl) : null;
+  const playback = rawPlayback?.kind === 'resolve' && resolvedTikTok?.reelId === active?.id
+    ? { kind: 'embed' as const, src: resolvedTikTok.src }
+    : rawPlayback;
+  const hasStarted = active?.id === startedReelId;
   const activeProducts = useMemo(() => active ? active.productIds.map((id) => products.find((item) => item.id === id)).filter((item): item is Product => Boolean(item)) : [], [active, products]);
 
   useEffect(() => { setActiveIndex(0); }, [reels.length]);
-  useEffect(() => { setVideoFailed(false); }, [active?.videoUrl]);
+  useEffect(() => {
+    setVideoFailed(false);
+    setStartedReelId(null);
+    setTiktokResolveError('');
+    if (!active || rawPlayback?.kind !== 'resolve') return;
+    let cancelled = false;
+    fetch('/api/resolve-tiktok?url=' + encodeURIComponent(active.videoUrl))
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not prepare this TikTok reel.');
+        return data as { embedUrl?: string };
+      })
+      .then((data) => {
+        if (!cancelled && data.embedUrl) setResolvedTikTok({ reelId: active.id, src: data.embedUrl });
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setTiktokResolveError(error instanceof Error ? error.message : 'Could not prepare this TikTok reel.');
+      });
+    return () => { cancelled = true; };
+  }, [active?.id, active?.videoUrl, rawPlayback?.kind]);
   const shift = (amount: number) => {
     if (reels.length < 2) return;
     setActiveIndex((current) => (current + amount + reels.length) % reels.length);
@@ -104,7 +132,7 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
         .rf-stage{height:490px;max-width:1180px;margin:0 auto;position:relative;display:flex;align-items:center;justify-content:center;perspective:1300px;touch-action:pan-y;cursor:grab;user-select:none}.rf-stage.is-dragging{cursor:grabbing}
         .rf-card{position:absolute;left:50%;top:50%;width:clamp(180px,20vw,252px);height:438px;transform-origin:center center;border:1px solid #5369b5;border-radius:19px;overflow:hidden;background:#10172f;box-shadow:0 18px 55px #0008;transition:transform .6s cubic-bezier(.2,.75,.2,1),opacity .5s,filter .5s;cursor:pointer}
         .rf-card video,.rf-card img,.rf-card iframe{width:100%;height:100%;object-fit:cover;display:block;background:linear-gradient(145deg,#cbb8a3,#766b60);border:0}.rf-open-link{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 18px;border-radius:99px;background:#eefaff;color:#10172c;font:600 11px Arial,sans-serif;text-decoration:none;white-space:nowrap}.rf-no-poster{width:100%;height:100%;background:linear-gradient(145deg,#27366b,#11182d)}
-        .rf-card.is-active{border-color:#58ddff;box-shadow:0 0 0 1px #58ddff55,0 0 40px #3178ff55,0 20px 60px #0009;cursor:default}
+        .rf-embed-start{position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:9px;border:1px solid #ffffffaa;border-radius:99px;padding:14px 19px;background:#eefaff;color:#10172c;font:700 11px Arial,sans-serif;letter-spacing:.1em;cursor:pointer;box-shadow:0 4px 22px #0008}.rf-reel-status{position:absolute;z-index:3;left:12px;right:12px;top:50%;transform:translateY(-50%);padding:12px;border-radius:10px;background:#091128dd;color:#fff;text-align:center;font:11px/1.5 Arial,sans-serif}.rf-card.is-active{border-color:#58ddff;box-shadow:0 0 0 1px #58ddff55,0 0 40px #3178ff55,0 20px 60px #0009;cursor:default}
         .rf-card-shade{position:absolute;inset:45% 0 0;background:linear-gradient(transparent,#060916e8);pointer-events:none}.rf-card-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;border:1px solid #ffffffa8;border-radius:50%;display:grid;place-items:center;color:#fff;background:#05081777;font-size:21px}
         .rf-card-title{position:absolute;left:20px;right:16px;bottom:19px;font:600 12px Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase}.rf-card-index{position:absolute;left:18px;top:17px;border-radius:99px;padding:7px 10px;background:#070b1bcc;color:#dce6ff;font:9px Arial,sans-serif;letter-spacing:.1em}
         .rf-controls{position:absolute;left:50%;bottom:0;transform:translateX(-50%);display:flex;align-items:center;gap:16px;z-index:5}.rf-arrow{width:38px;height:38px;border:1px solid #56617e;border-radius:50%;background:#0b1228;color:#fff;font-size:18px;cursor:pointer}.rf-arrow:hover{border-color:#6be5ff;color:#6be5ff}.rf-dots{display:flex;gap:6px}.rf-dot{width:5px;height:5px;border-radius:50%;background:#64708e;border:0;padding:0;cursor:pointer}.rf-dot.active{width:20px;border-radius:9px;background:#61ddff}
@@ -131,7 +159,9 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
               {offset === 0 && playback?.kind === 'file' && !videoFailed
                 ? <video src={playback.src} poster={reel.posterUrl || undefined} autoPlay muted loop playsInline controls onError={() => setVideoFailed(true)} />
                 : reel.posterUrl ? <img src={reel.posterUrl} alt="" loading="lazy" /> : <div className="rf-no-poster" />}
-              {offset === 0 && playback?.kind === 'embed' && <iframe title={reel.title} src={playback.src} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="lazy" />}
+              {offset === 0 && playback?.kind === 'embed' && <iframe title={reel.title} src={hasStarted ? (() => { const playerUrl = new URL(playback.src); playerUrl.searchParams.set('autoplay', '1'); playerUrl.searchParams.set('muted', '1'); return playerUrl.toString(); })() : playback.src} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="eager" />}
+              {offset === 0 && playback?.kind === 'embed' && !hasStarted && <button type="button" className="rf-embed-start" onClick={(event) => { event.stopPropagation(); setStartedReelId(reel.id); }}>▶ <span>PLAY REEL</span></button>}
+              {offset === 0 && playback?.kind === 'resolve' && !resolvedTikTok && <div className="rf-reel-status">{tiktokResolveError || 'Preparing TikTok reel…'}</div>}
               {offset === 0 && (playback?.kind === 'link' || videoFailed) && <a className="rf-open-link" href={reel.videoUrl} target="_blank" rel="noreferrer">Open reel ↗</a>}
               <span className="rf-card-shade"/><span className="rf-card-index">REEL {String(index + 1).padStart(2,'0')}</span>
               {offset !== 0 && <span className="rf-card-play" aria-hidden="true">▶</span>}<span className="rf-card-title">{reel.title}</span>
