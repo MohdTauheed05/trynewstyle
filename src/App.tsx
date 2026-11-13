@@ -341,7 +341,7 @@ export default function App() {
               />
             </div>
 
-            <PageRibbonSection shopName={settings.shopName} looks={looks} products={products} />
+            <PageRibbonSection shopName={settings.shopName} />
           </main>
 
           <BagDialog
