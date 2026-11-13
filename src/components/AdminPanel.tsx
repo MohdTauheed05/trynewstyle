@@ -90,6 +90,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editingLadiesRailItem, setEditingLadiesRailItem] = useState<LadiesRailItem | null>(null);
   const [reels, setReels] = useState<ReelItem[]>(() => getStoredReels());
   const [editingReelId, setEditingReelId] = useState<string | null>(null);
+  const [reelSaveMessage, setReelSaveMessage] = useState('');
+  const [isSavingReel, setIsSavingReel] = useState(false);
   const [reelForm, setReelForm] = useState({ title: '', caption: '', videoUrl: '', posterUrl: '', productIds: [] as string[] });
 
   const [ladiesRailForm, setLadiesRailForm] = useState({
@@ -870,7 +872,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setReelForm({ title: '', caption: '', videoUrl: '', posterUrl: '', productIds: [] });
   };
 
-  const handleSaveReel = (event: React.FormEvent) => {
+  const handleSaveReel = async (event: React.FormEvent) => {
     event.preventDefault();
     const nextItem: ReelItem = {
       id: editingReelId || 'reel-' + Date.now(),
@@ -881,9 +883,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       productIds: reelForm.productIds,
     };
     const next = editingReelId ? reels.map((item) => item.id === editingReelId ? nextItem : item) : [...reels, nextItem];
+    setIsSavingReel(true);
+    setReelSaveMessage('');
     setReels(next);
-    saveReels(next);
-    resetReelForm();
+    const result = await saveReels(next);
+    setIsSavingReel(false);
+    if (result.success) {
+      setReelSaveMessage('Reel saved to the shared store. It will appear on other devices after they load the storefront.');
+      resetReelForm();
+    } else {
+      setReelSaveMessage('Reel is only saved on this device. Firebase sync failed: ' + result.message);
+    }
   };
 
   const editReel = (item: ReelItem) => {
@@ -2039,6 +2049,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
             <form onSubmit={handleSaveReel} className="bg-white border border-[#e4e4e4] p-6 space-y-4 text-xs">
               <h3 className="font-semibold uppercase tracking-wider">{editingReelId ? 'Edit reel' : 'Add a reel'}</h3>
+              {reelSaveMessage && <p role="status" className={reelSaveMessage.startsWith('Reel saved') ? 'border border-emerald-200 bg-emerald-50 p-3 text-emerald-800' : 'border border-red-200 bg-red-50 p-3 text-red-800'}>{reelSaveMessage}</p>}
               <div className="grid sm:grid-cols-2 gap-4">
                 <label className="grid gap-1">Reel title<input required value={reelForm.title} onChange={(e) => setReelForm({ ...reelForm, title: e.target.value })} className="border p-2.5" placeholder="The City Edit" /></label>
                 <label className="grid gap-1">Video URL<input required type="url" value={reelForm.videoUrl} onChange={(e) => setReelForm({ ...reelForm, videoUrl: e.target.value })} className="border p-2.5" placeholder="https://..." /></label>
@@ -2054,7 +2065,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div className="flex gap-2 justify-end">
                 {editingReelId && <button type="button" onClick={resetReelForm} className="px-4 py-2 border">Cancel</button>}
-                <button type="submit" className="px-5 py-2 bg-black text-white font-semibold">{editingReelId ? 'Save reel' : 'Add reel'}</button>
+                <button type="submit" className="px-5 py-2 bg-black text-white font-semibold">{isSavingReel ? 'Saving…' : editingReelId ? 'Save reel' : 'Add reel'}</button>
               </div>
             </form>
             <div className="space-y-3">
