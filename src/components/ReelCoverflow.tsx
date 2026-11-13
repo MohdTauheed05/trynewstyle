@@ -12,26 +12,26 @@ type ReelPlayback =
 function resolveReelPlayback(rawUrl: string): ReelPlayback {
   try {
     const url = new URL(rawUrl);
-    const host = url.hostname.replace(/^www\\./, '').toLowerCase();
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
     const path = url.pathname;
 
     if (host === 'youtu.be' || host.endsWith('youtube.com')) {
-      const id = host === 'youtu.be' ? path.split('/').filter(Boolean)[0] : (url.searchParams.get('v') || path.match(/\\/(?:embed|shorts|live)\\/([^/?]+)/)?.[1]);
+      const id = host === 'youtu.be' ? path.split('/').filter(Boolean)[0] : (url.searchParams.get('v') || path.match(/\/(?:embed|shorts|live)\/([^/?]+)/)?.[1]);
       if (id) return { kind: 'embed', src: 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(id) + '?autoplay=1&mute=1&playsinline=1&rel=0' };
     }
     if (host === 'instagram.com') {
-      const match = path.match(/\\/(?:reel|reels|p|tv)\\/([^/?]+)/);
+      const match = path.match(/\/(?:reel|reels|p|tv)\/([^/?]+)/);
       if (match) return { kind: 'embed', src: 'https://www.instagram.com/reel/' + encodeURIComponent(match[1]) + '/embed/' };
     }
     if (host === 'tiktok.com') {
-      const id = path.match(/\\/video\\/(\\d+)/)?.[1];
+      const id = path.match(/\/video\/(\d+)/)?.[1];
       if (id) return { kind: 'embed', src: 'https://www.tiktok.com/player/v1/' + id + '?autoplay=1&loop=1' };
     }
     if (host.endsWith('facebook.com') || host === 'fb.watch') {
       return { kind: 'embed', src: 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url.href) + '&show_text=0&autoplay=1' };
     }
 
-    if (/\\.(mp4|m4v|webm|ogv)(?:$|[?#])/i.test(url.href) || /cloudinary\\.com\\/[^/]+\\/video\\/upload\\//i.test(url.href)) {
+    if (/\.(mp4|m4v|webm|ogv)(?:$|[?#])/i.test(url.href) || /cloudinary\.com\/[^/]+\/video\/upload\//i.test(url.href)) {
       return { kind: 'file', src: url.href };
     }
     return { kind: 'link', src: url.href };
