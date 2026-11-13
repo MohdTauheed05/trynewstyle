@@ -9,7 +9,7 @@ interface PageRibbonSectionProps {
   products: Product[];
 }
 
-type RibbonModel = { id: string; name: string; image: string; crop?: [number, number, number, number] };
+type RibbonModel = { id: string; name: string; image: string; fallbackImage?: string; crop?: [number, number, number, number] };
 
 type PageItem = {
   id: string;
@@ -42,9 +42,11 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
 
   const pages = useMemo<PageItem[]>(() => {
     const availableLooks = looks.length ? looks : DEFAULT_LOOKS;
-    const men: RibbonModel[] = availableLooks
-      .filter((look) => !look.modelGroup || look.modelGroup.toLowerCase() === 'men')
-      .map((look) => ({ id: look.id, name: look.name, image: look.srcset1080 || look.src640 }));
+    const menLooks = availableLooks.filter((look) => !look.modelGroup || ['men', 'mens', 'male'].includes(look.modelGroup.toLowerCase()));
+    const menSource = menLooks.length ? menLooks : DEFAULT_LOOKS;
+    const men: RibbonModel[] = menSource
+      .filter((look) => Boolean(look.src640 || look.srcset1080))
+      .map((look) => ({ id: look.id, name: look.name, image: look.src640 || look.srcset1080, fallbackImage: look.srcset1080 }));
     const ladies: RibbonModel[] = LADIES_LOOK_BOUNDS.map(([x0, x1], index) => ({
       id: 'ladies-model-' + (index + 1),
       name: 'Ladies Look ' + String(index + 1).padStart(2, '0'),
@@ -217,7 +219,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const renderShot = (page: PageItem) => {
     const modelImage = (look: RibbonModel, className: string, style?: React.CSSProperties) => look.crop
               ? <svg key={look.id} className={className + ' pr-shot-model-svg'} viewBox={look.crop.join(' ')} preserveAspectRatio="xMidYMax meet" style={style} aria-label={look.name}><image href={look.image} width="960" height="540" /></svg>
-              : <img key={look.id} className={className} src={look.image} alt={look.name} loading="eager" decoding="async" style={style} />;
+              : <img key={look.id} className={className} src={look.image} alt={look.name} loading="eager" decoding="async" style={style} onError={(event) => { const image = event.currentTarget; if (look.fallbackImage && image.src !== look.fallbackImage) image.src = look.fallbackImage; }} />;
     const modelList = page.models || [];
     const productList = page.products || [];
     const modelImages = modelList.slice(0, page.mode === 'circle' ? 12 : 5);
@@ -282,18 +284,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
               className="pr-card"
               href={'#' + page.id}
               onClick={(event) => {
-                if (draggedRef.current) {
-                  event.preventDefault();
-                  return;
-                }
-                event.preventDefault();
-                const target = document.getElementById(page.id);
-                if (!target) return;
-                const hash = '#' + page.id;
-                if (window.location.hash !== hash) window.history.pushState(null, '', hash);
-                const headerHeight = Number.parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64;
-                const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
-                window.scrollTo({ top, behavior: 'smooth' });
+                if (draggedRef.current) event.preventDefault();
               }}
               aria-label={'Open ' + page.title}
               draggable={false}
