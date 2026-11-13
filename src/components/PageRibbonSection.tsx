@@ -17,8 +17,8 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const ladiesLook = looks.find((look) => look.modelGroup === 'ladies');
   const westernLook = looks.find((look) => look.modelGroup === 'western');
   const fallbackLook = looks[0];
-  const tops = products.filter((product) => product.category === 'top' || product.category === 'hoodie' || product.category === 'sweatshirt');
-  const dresses = products.filter((product) => product.virtualStudioLook || product.category === 'accessory');
+  const tops = useMemo(() => products.filter((product) => product.category === 'top' || product.category === 'hoodie' || product.category === 'sweatshirt'), [products]);
+  const dresses = useMemo(() => products.filter((product) => product.virtualStudioLook || product.category === 'accessory'), [products]);
   const pageItems = useMemo(() => [
     { id: 'men-studio', title: "Men's Studio", kicker: '01 / RUNWAY', image: menLook?.srcset1080 || menLook?.src640 || products[0]?.image, tone: 'sand' },
     { id: 'offcut-rail-section', title: '3D Hanger T-Shirts', kicker: '02 / CHROME RAIL', image: tops[0]?.image || products[1]?.image || menLook?.src640, tone: 'blue' },
@@ -53,11 +53,16 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
 
   const columns = typeof window !== 'undefined' && window.innerWidth < 680 ? 2 : 3;
   const stageWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
-  const stageHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const headerHeight = typeof window !== 'undefined' ? (Number.parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64) : 64;
+  const stageHeight = typeof window !== 'undefined' ? Math.max(400, window.innerHeight - headerHeight) : 800;
   const layoutProgress = clamp((progress - 0.22) / 0.66);
   const openPage = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault();
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const target = document.getElementById(id);
+    if (!target) return;
+    const headerHeight = Number.parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64;
+    const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
+    window.scrollTo({ top, behavior: 'smooth' });
   };
 
   return (
