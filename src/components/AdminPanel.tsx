@@ -38,6 +38,7 @@ import {
   saveLadiesRailItems,
   resetLadiesRailItems,
 } from '../services/ladiesRailStorage';
+import { ReelItem, getStoredReels, saveReels } from '../services/reelStorage';
 
 interface AdminPanelProps {
   looks: Look[];
@@ -87,7 +88,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [ladiesRailItems, setLadiesRailItems] = useState<LadiesRailItem[]>(() => getStoredLadiesRailItems());
   const [ladiesRailModalOpen, setLadiesRailModalOpen] = useState(false);
   const [editingLadiesRailItem, setEditingLadiesRailItem] = useState<LadiesRailItem | null>(null);
-  const [reels, setReels] = useState<ReelItem[]>(() => getStoredReels());\n  const [editingReelId, setEditingReelId] = useState<string | null>(null);\n  const [reelForm, setReelForm] = useState({ title: '', caption: '', videoUrl: '', posterUrl: '', productIds: [] as string[] });\n\n  const [ladiesRailForm, setLadiesRailForm] = useState({
+  const [reels, setReels] = useState<ReelItem[]>(() => getStoredReels());
+  const [editingReelId, setEditingReelId] = useState<string | null>(null);
+  const [reelForm, setReelForm] = useState({ title: '', caption: '', videoUrl: '', posterUrl: '', productIds: [] as string[] });
+
+  const [ladiesRailForm, setLadiesRailForm] = useState({
     name: '',
     price: '380.00',
     image: '',
@@ -175,11 +180,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
     window.addEventListener('runway:rail_updated', refreshSharedSections);
     window.addEventListener('runway:ladies_updated', refreshSharedSections);
-    window.addEventListener('runway:ladies_rail_updated', refreshSharedSections);\n    window.addEventListener('runway:reels_updated', refreshSharedSections);
+    window.addEventListener('runway:ladies_rail_updated', refreshSharedSections);
+    window.addEventListener('runway:reels_updated', refreshSharedSections);
     return () => {
       window.removeEventListener('runway:rail_updated', refreshSharedSections);
       window.removeEventListener('runway:ladies_updated', refreshSharedSections);
-      window.removeEventListener('runway:ladies_rail_updated', refreshSharedSections);\n      window.removeEventListener('runway:reels_updated', refreshSharedSections);
+      window.removeEventListener('runway:ladies_rail_updated', refreshSharedSections);
+      window.removeEventListener('runway:reels_updated', refreshSharedSections);
     };
   }, []);
 
