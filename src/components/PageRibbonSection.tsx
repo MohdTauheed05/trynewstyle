@@ -147,7 +147,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
         card.style.transform = 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px) translate(-50%,-50%) rotateY(' + rotateY + 'deg) rotateZ(' + rotateZ + 'deg) scale(' + scale + ')';
         card.style.zIndex = String(100 - Math.round(distance * 10));
         card.style.opacity = String(opacity);
-        if (distance < 0.7) {
+        if (distance < 1.6) {
           const livePreview = card.querySelector<HTMLIFrameElement>('[data-live-src]');
           if (livePreview && livePreview.dataset.loaded !== 'true') {
             livePreview.src = livePreview.dataset.liveSrc || 'about:blank';
