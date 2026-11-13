@@ -1,13 +1,20 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Look, Product } from '../types';
+import React, { useEffect, useRef } from 'react';
 
 interface PageRibbonSectionProps {
   shopName: string;
-  looks: Look[];
-  products: Product[];
 }
 
-export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, looks, products }) => {
+const PAGES = [
+  { id: 'men-studio', title: "Men's Studio", kicker: '01 / RUNWAY' },
+  { id: 'offcut-rail-section', title: '3D Hanger T-Shirts', kicker: '02 / CHROME RAIL' },
+  { id: 'ladies-section', title: 'Ladies Collection', kicker: '03 / LOOKBOOK' },
+  { id: 'ladies-rail-section', title: '3D Hanger Dresses', kicker: '04 / LADIES RAIL' },
+  { id: 'virtual-studio', title: 'Western Model', kicker: '05 / WESTERN WEAR' },
+  { id: 'circle-lookbook', title: 'Circle Model Page', kicker: '06 / CIRCLE LOOKBOOK' },
+  { id: 'product-collection', title: 'All Products', kicker: '07 / FULL COLLECTION' },
+];
+
+export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName }) => {
   const stageRef = useRef<HTMLElement | null>(null);
   const cardRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   const phaseRef = useRef(0);
@@ -15,15 +22,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const dragRef = useRef<{ x: number; phase: number } | null>(null);
   const draggedRef = useRef(false);
 
-  const pages = useMemo(() => [
-    { id: 'men-studio', title: "Men's Studio", kicker: '01 / RUNWAY' },
-    { id: 'offcut-rail-section', title: '3D Hanger T-Shirts', kicker: '02 / CHROME RAIL' },
-    { id: 'ladies-section', title: 'Ladies Collection', kicker: '03 / LOOKBOOK' },
-    { id: 'ladies-rail-section', title: '3D Hanger Dresses', kicker: '04 / LADIES RAIL' },
-    { id: 'virtual-studio', title: 'Western Model', kicker: '05 / WESTERN WEAR' },
-    { id: 'circle-lookbook', title: 'Circle Model Page', kicker: '06 / CIRCLE LOOKBOOK' },
-    { id: 'product-collection', title: 'All Products', kicker: '07 / FULL COLLECTION' },
-  ], []);
+  const pages = PAGES;
   const counterRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
@@ -32,11 +31,10 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     let frame = 0;
     let previousTime = 0;
     let visible = true;
-    let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const updateMotionPreference = () => {
-      reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    };
-    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', updateMotionPreference);
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let reducedMotion = motionQuery.matches;
+    const updateMotionPreference = () => { reducedMotion = motionQuery.matches; };
+    motionQuery.addEventListener?.('change', updateMotionPreference);
     const observer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
       if (visible) previousTime = 0;
@@ -84,7 +82,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     return () => {
       cancelAnimationFrame(frame);
       observer?.disconnect();
-      window.matchMedia('(prefers-reduced-motion: reduce)').removeEventListener?.('change', updateMotionPreference);
+      motionQuery.removeEventListener?.('change', updateMotionPreference);
     };
   }, [pages.length]);
 
@@ -110,8 +108,6 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     event.currentTarget.classList.remove('is-dragging');
     window.setTimeout(() => { draggedRef.current = false; }, 0);
   };
-  const activeIndex = ((Math.round(phaseRef.current) % pages.length) + pages.length) % pages.length;
-
   return (
     <section className="page-ribbon" id="page-ribbon" aria-label={shopName + ' page previews'}>
       <div className="pr-stage" ref={stageRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
