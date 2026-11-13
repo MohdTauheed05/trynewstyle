@@ -95,15 +95,18 @@ export default function App() {
     const handleSettingsUpdate = () => {
       setSettings(getStoredSettings());
     };
+    const handleReelsUpdate = () => setReels(getStoredReels());
 
     window.addEventListener('runway:catalog_updated', handleCatalogUpdate);
     window.addEventListener('runway:bag_updated', handleBagUpdate);
     window.addEventListener('runway:settings_updated', handleSettingsUpdate);
+    window.addEventListener('runway:reels_updated', handleReelsUpdate);
 
     return () => {
       window.removeEventListener('runway:catalog_updated', handleCatalogUpdate);
       window.removeEventListener('runway:bag_updated', handleBagUpdate);
       window.removeEventListener('runway:settings_updated', handleSettingsUpdate);
+      window.removeEventListener('runway:reels_updated', handleReelsUpdate);
     };
   }, []);
 
