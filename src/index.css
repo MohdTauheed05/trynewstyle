@@ -3509,7 +3509,7 @@ button:focus-visible, a:focus-visible {
 .pr-shot-product span { overflow: hidden; padding: 3px; color: #555; font-size: 5px; text-overflow: ellipsis; white-space: nowrap; }
 .pr-shot-circle { position: relative; display: grid; flex: 1; place-items: center; overflow: hidden; }
 .pr-shot-orbit { position: absolute; width: 68%; aspect-ratio: 1; border: 1px dashed #d8dadd; border-radius: 50%; }
-.pr-shot-circle > img { position: absolute; z-index: 1; width: 19%; height: 39%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 3px 3px rgba(0,0,0,.12)); }
+.pr-shot-circle > img { position: absolute; z-index: 1; width: 19%; height: 39%; object-fit: contain; object-position: center bottom; transform: translate(-50%,-50%); filter: drop-shadow(0 3px 3px rgba(0,0,0,.12)); }
 .pr-shot-circle > span { z-index: 2; padding: 5px; background: rgba(255,255,255,.7); font: 7px Georgia,serif; text-align: center; }
 .pr-shot-footer {
   z-index: 2;
@@ -3571,7 +3571,6 @@ button:focus-visible, a:focus-visible {
   .pr-shot-sitebar strong { font-size: 6px; }
   .pr-shot-shop { width: 21%; padding: 5px 3px; gap: 5px; }
   .pr-shot-shop img { height: 34px; }
-  .pr-shot-card-copy { flex-basis: 35px; }
   .pr-card-copy { flex-basis: 35px; padding-top: 5px; }
   .pr-card-copy span { font-size: 6px; }
   .pr-card-copy strong { font-size: 12px; }
