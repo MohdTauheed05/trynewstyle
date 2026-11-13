@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Invalid TikTok URL' });
   }
 
-  const host = source.hostname.replace(/^www\\./i, '').toLowerCase();
+  const host = source.hostname.replace(/^www\./i, '').toLowerCase();
   if (!(host === 'tiktok.com' || host.endsWith('.tiktok.com'))) {
     return res.status(400).json({ error: 'Only TikTok links can be resolved' });
   }
@@ -20,7 +20,7 @@ export default async function handler(req: any, res: any) {
   const getVideoId = (candidate: string) => {
     try {
       const parsed = new URL(candidate);
-      return parsed.pathname.match(/\\/video\\/(\\d+)/)?.[1] || '';
+      return parsed.pathname.match(/\/video\/(\d+)/)?.[1] || '';
     } catch {
       return '';
     }
@@ -39,8 +39,8 @@ export default async function handler(req: any, res: any) {
       const canonical = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i)?.[1]
         || html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i)?.[1];
       videoId = getVideoId(canonical || '');
-      if (!videoId) videoId = html.match(/"videoId"\\s*:\\s*"?(\\d{15,})"?/)?.[1] || '';
-      if (!videoId) videoId = html.match(/"id"\\s*:\\s*"?(\\d{15,})"?/)?.[1] || '';
+      if (!videoId) videoId = html.match(/"videoId"\s*:\s*"?(\d{15,})"?/)?.[1] || '';
+      if (!videoId) videoId = html.match(/"id"\s*:\s*"?(\d{15,})"?/)?.[1] || '';
     }
 
     if (!videoId) return res.status(422).json({ error: 'Could not find the TikTok video ID. Use the full TikTok video URL or a direct MP4 URL.' });
