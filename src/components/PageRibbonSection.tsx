@@ -137,7 +137,15 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       else stop();
     }, { threshold: 0.03 });
     const onVisibilityChange = () => document.hidden ? stop() : start();
+    const releaseOutsideStage = (event: PointerEvent) => {
+      if (event.target instanceof Node && stage.contains(event.target)) return;
+      dragRef.current = null;
+      stage.classList.remove('is-dragging');
+      window.setTimeout(() => { draggedRef.current = false; }, 100);
+    };
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pointerup', releaseOutsideStage);
+    window.addEventListener('pointercancel', releaseOutsideStage);
     if (observer) observer.observe(stage);
     else {
       visible = true;
@@ -148,6 +156,8 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       stop();
       observer?.disconnect();
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pointerup', releaseOutsideStage);
+      window.removeEventListener('pointercancel', releaseOutsideStage);
       motionQuery.removeEventListener?.('change', updateMotionPreference);
     };
   }, [pages.length]);
