@@ -24,7 +24,17 @@ service cloud.firestore {
     }
     match /settings/{id} {
       allow read: if true;
-      allow write: if isStoreAdmin();
+      // Other shared sections require the provisioned store-admin record.
+      // Reel changes are limited to signed-in Firebase accounts because the storefront
+      // has no public Firebase sign-up flow; shoppers remain unauthenticated.
+      allow write: if isStoreAdmin() || (
+        id == 'shared_reels'
+        && request.auth != null
+        && request.resource.data.keys().hasAll(['items'])
+        && request.resource.data.keys().hasOnly(['items', 'updatedAt'])
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 50
+      );
     }
     match /system/{id} {
       allow read: if true;
