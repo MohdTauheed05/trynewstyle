@@ -892,7 +892,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setReelSaveMessage('Reel saved to the shared store. It will appear on other devices after they load the storefront.');
       resetReelForm();
     } else {
-      setReelSaveMessage('Reel is only saved on this device. Firebase sync failed: ' + result.message);
+      const permissionHelp = result.message.toLowerCase().includes('permission')
+        ? ' Firebase is still using older rules. Publish the latest firestore.rules file from the GitHub main branch in Firebase Console, then save again.'
+        : '';
+      setReelSaveMessage('Reel is only saved on this device. Firebase sync failed: ' + result.message + permissionHelp);
     }
   };
 
