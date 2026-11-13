@@ -38,7 +38,7 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
     shift(delta > 0 ? 1 : -1);
   };
   const onPointerDown = (event: React.PointerEvent<HTMLElement>) => {
-    if ((event.target as HTMLElement).closest('.rf-controls,button')) return;
+    if ((event.target as HTMLElement).closest('.rf-controls,button,video')) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     setDragStart(event.clientX);
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* ignore */ }
