@@ -27,6 +27,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   const ringRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const dragState = useRef({ active: false, moved: false, startX: 0, startIndex: 0 });
   const [activeIndex, setActiveIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
@@ -106,6 +107,44 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   const ringEntries = entries;
   const selectedIndex = ringEntries.length ? ((activeIndex % ringEntries.length) + ringEntries.length) % ringEntries.length : 0;
   const active = ringEntries[selectedIndex];
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'touch' || (event.pointerType === 'mouse' && event.button !== 0) || !ringEntries.length) return;
+    dragState.current = { active: true, moved: false, startX: event.clientX, startIndex: selectedIndex };
+    event.currentTarget.classList.add('is-dragging');
+    const captureTarget = (event.target as HTMLElement).closest('.cl-orbit-model') || event.currentTarget;
+    try { captureTarget.setPointerCapture(event.pointerId); } catch { /* capture may be unavailable */ }
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragState.current;
+    if (!drag.active) return;
+    const dx = event.clientX - drag.startX;
+    if (Math.abs(dx) > 5) drag.moved = true;
+    if (!drag.moved) return;
+    const step = Math.max(52, (stageRef.current?.clientWidth || window.innerWidth) / 16);
+    const nextIndex = ((drag.startIndex - Math.round(dx / step)) % ringEntries.length + ringEntries.length) % ringEntries.length;
+    setActiveIndex(nextIndex);
+  };
+
+  const handlePointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragState.current;
+    if (!drag.active) return;
+    drag.active = false;
+    event.currentTarget.classList.remove('is-dragging');
+    const captureTarget = event.target as HTMLElement;
+    try { if (captureTarget.hasPointerCapture(event.pointerId)) captureTarget.releasePointerCapture(event.pointerId); } catch { /* capture may already be released */ }
+    if (drag.moved) {
+      window.setTimeout(() => { dragState.current.moved = false; }, 250);
+    }
+  };
+
+  const handleDragClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!dragState.current.moved) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragState.current.moved = false;
+  };
+
   const handleTouchStart = (event: React.TouchEvent<HTMLElement>) => {
     const touch = event.touches[0];
     touchStart.current = { x: touch.clientX, y: touch.clientY };
@@ -192,7 +231,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         .circle-lookbook{--ink:#151515;--muted:#757575;position:relative;isolation:isolate;height:100svh;min-height:620px;max-height:1000px;overflow:hidden;background:#fff;color:var(--ink);padding:0 24px}
         .circle-lookbook *{box-sizing:border-box}.cl-top{height:58px;position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e6e6e6;font:10px/1 Arial,sans-serif;letter-spacing:.13em}
         .cl-brand{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;letter-spacing:-.04em}.cl-brand sup{font-size:8px}.cl-signal,.cl-top-right{display:flex;align-items:center;gap:12px}.cl-signal{color:#777}
-        .cl-stage{position:absolute;inset:58px 330px 0 0;overflow:hidden}.cl-ring{position:absolute;left:50%;top:60%;width:min(58vw,900px);height:min(38vh,360px);transform:translate(-50%,-50%);border:1px dashed #e3e3e3;border-radius:50%;pointer-events:none}
+        .cl-stage{position:absolute;inset:58px 330px 0 0;overflow:hidden;cursor:grab;touch-action:pan-y}.cl-stage.is-dragging{cursor:grabbing;user-select:none}.cl-ring{position:absolute;left:50%;top:60%;width:min(58vw,900px);height:min(38vh,360px);transform:translate(-50%,-50%);border:1px dashed #e3e3e3;border-radius:50%;pointer-events:none}
         .cl-center-title{display:none}
         .cl-subtitle{font:10px Arial,sans-serif;letter-spacing:.08em;color:#888;margin-top:12px;line-height:1.4}
         .cl-orbit-model{position:absolute;width:clamp(96px,14vw,190px);height:clamp(220px,39vh,400px);transform-origin:center center;transition:left .75s cubic-bezier(.16,1,.3,1),top .75s cubic-bezier(.16,1,.3,1),transform .75s cubic-bezier(.16,1,.3,1),opacity .5s;cursor:pointer;background:none;border:0;padding:0;display:flex;align-items:flex-end;justify-content:center}
@@ -221,7 +260,16 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
         <div className="cl-top-right"><span className="cl-kicker">{ringEntries.length} looks · scroll to explore</span></div>
       </div>
       {active ? <>
-        <div className="cl-stage" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <div
+          className="cl-stage"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerEnd}
+          onPointerCancel={handlePointerEnd}
+          onClickCapture={handleDragClickCapture}
+        >
           <div className="cl-ring" />
           <div className="cl-center-title">Stay out<br/>of the loop<div className="cl-subtitle">Vol. 01 — {ringEntries.length} looks</div></div>
           {ringEntries.map((entry, index) => (
