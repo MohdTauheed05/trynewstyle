@@ -147,6 +147,13 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
         card.style.transform = 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px) translate(-50%,-50%) rotateY(' + rotateY + 'deg) rotateZ(' + rotateZ + 'deg) scale(' + scale + ')';
         card.style.zIndex = String(100 - Math.round(distance * 10));
         card.style.opacity = String(opacity);
+        if (distance < 0.7) {
+          const livePreview = card.querySelector<HTMLIFrameElement>('[data-live-src]');
+          if (livePreview && livePreview.dataset.loaded !== 'true') {
+            livePreview.src = livePreview.dataset.liveSrc || 'about:blank';
+            livePreview.dataset.loaded = 'true';
+          }
+        }
       });
 
       frame = requestAnimationFrame(animate);
@@ -218,6 +225,18 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   };
 
   const renderShot = (page: PageItem) => {
+    if (page.id === 'men-studio' || page.id === 'circle-lookbook') {
+      return (
+        <iframe
+          className="pr-live-preview"
+          data-live-src={'/?ribbonPreview=' + page.id}
+          title={page.title + ' live preview'}
+          loading="lazy"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      );
+    }
     const modelImage = (look: RibbonModel, className: string, style?: React.CSSProperties) => look.crop
               ? <svg key={look.id} className={className + ' pr-shot-model-svg'} viewBox={look.crop.join(' ')} preserveAspectRatio="xMidYMax meet" style={style} aria-label={look.name}><image href={look.image} width="960" height="540" /></svg>
               : <img key={look.id} className={className} src={look.image} srcSet={look.srcSet} sizes="(min-width: 750px) 320px, 45vw" width="1100" height="1956" alt={look.name} loading="eager" decoding="async" style={style} onError={(event) => { const image = event.currentTarget; if (look.fallbackImage && image.src !== look.fallbackImage) image.src = look.fallbackImage; }} />;
