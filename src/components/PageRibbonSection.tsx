@@ -58,7 +58,9 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName }
       if (Math.abs(wheelRef.current) < 0.0001) wheelRef.current = 0;
 
       const count = pages.length;
-          if (counterRef.current) counterRef.current.textContent = String(activeIndex + 1).padStart(2, '0') + ' / ' + String(pages.length).padStart(2, '0');
+      phaseRef.current = ((phaseRef.current % count) + count) % count;
+      const activeIndex = ((Math.round(phaseRef.current) % count) + count) % count;
+      if (counterRef.current) counterRef.current.textContent = String(activeIndex + 1).padStart(2, '0') + ' / ' + String(count).padStart(2, '0');
       cardRefs.current.forEach((card, index) => {
         if (!card) return;
         const half = count / 2;
