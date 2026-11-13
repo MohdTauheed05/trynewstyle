@@ -68,7 +68,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       image: 'https://images.higgs.ai/?default=1&output=webp&url=' + encodeURIComponent(studioCdn + file) + '&w=1000&q=85',
     })).concat(availableLooks.filter((look) => look.modelGroup?.toLowerCase() === 'western')
       .map((look) => ({ id: look.id, name: look.name, image: look.srcset1080 || look.src640 })));
-    const allModels = [...men, ...ladies, ...western];
+    const allModels = [...men.slice(0, 4), ...ladies.slice(0, 4), ...western.slice(0, 4)];
     const tops = products.filter((product) => ['top', 'hoodie', 'sweatshirt'].includes(product.category || ''));
     const dresses = products.filter((product) => Boolean(product.virtualStudioLook));
     const matchingProducts = (look?: Look) => look
@@ -219,7 +219,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
               : <img key={look.id} className={className} src={look.image} alt={look.name} loading="eager" decoding="async" style={style} />;
     const modelList = page.models || [];
     const productList = page.products || [];
-        const modelImages = modelList.slice(0, page.mode === 'circle' ? 12 : 5);
+    const modelImages = modelList.slice(0, page.mode === 'circle' ? 12 : 5);
     const productImages = productList.slice(0, page.mode === 'products' ? 9 : 3);
 
     return (
