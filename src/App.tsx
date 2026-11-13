@@ -81,6 +81,45 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const sectionIds = new Set([
+      'men-studio',
+      'offcut-rail-section',
+      'ladies-section',
+      'ladies-rail-section',
+      'virtual-studio',
+      'circle-lookbook',
+      'product-collection',
+    ]);
+    const sectionId = window.location.hash.slice(1);
+    if (!sectionIds.has(sectionId)) return;
+
+    let timeoutId = 0;
+    let attempts = 0;
+    let animationFrame = 0;
+    const findAndScroll = () => {
+      const target = document.getElementById(sectionId);
+      if (target) {
+        const headerHeight = Number.parseFloat(
+          window.getComputedStyle(document.documentElement).getPropertyValue('--header-h'),
+        ) || 64;
+        const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+        return;
+      }
+      attempts += 1;
+      if (attempts < 40) timeoutId = window.setTimeout(findAndScroll, 50);
+    };
+    animationFrame = window.requestAnimationFrame(() => {
+      animationFrame = window.requestAnimationFrame(findAndScroll);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
   // Sync catalog & settings updates
   useEffect(() => {
     const handleCatalogUpdate = () => {
