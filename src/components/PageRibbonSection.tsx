@@ -9,7 +9,7 @@ interface PageRibbonSectionProps {
   products: Product[];
 }
 
-type RibbonModel = { id: string; name: string; image: string; fallbackImage?: string; crop?: [number, number, number, number] };
+type RibbonModel = { id: string; name: string; image: string; srcSet?: string; fallbackImage?: string; crop?: [number, number, number, number] };
 
 type PageItem = {
   id: string;
@@ -47,7 +47,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     const menSource = menLooks.length ? menLooks : DEFAULT_LOOKS;
     const men: RibbonModel[] = menSource
       .filter((look) => Boolean(look.src640 || look.srcset1080))
-      .map((look) => ({ id: look.id, name: look.name, image: look.src640 || look.srcset1080, fallbackImage: look.srcset1080 }));
+      .map((look) => ({ id: look.id, name: look.name, image: look.src640 || look.srcset1080, srcSet: look.src640 && look.srcset1080 ? `${look.src640} 640w, ${look.srcset1080} 1080w` : undefined, fallbackImage: look.srcset1080 }));
     const ladies: RibbonModel[] = LADIES_LOOK_BOUNDS.map(([x0, x1], index) => ({
       id: 'ladies-model-' + (index + 1),
       name: 'Ladies Look ' + String(index + 1).padStart(2, '0'),
@@ -220,7 +220,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const renderShot = (page: PageItem) => {
     const modelImage = (look: RibbonModel, className: string, style?: React.CSSProperties) => look.crop
               ? <svg key={look.id} className={className + ' pr-shot-model-svg'} viewBox={look.crop.join(' ')} preserveAspectRatio="xMidYMax meet" style={style} aria-label={look.name}><image href={look.image} width="960" height="540" /></svg>
-              : <img key={look.id} className={className} src={look.image} alt={look.name} loading="eager" decoding="async" style={style} onError={(event) => { const image = event.currentTarget; if (look.fallbackImage && image.src !== look.fallbackImage) image.src = look.fallbackImage; }} />;
+              : <img key={look.id} className={className} src={look.image} srcSet={look.srcSet} sizes="(min-width: 750px) 320px, 45vw" width="1100" height="1956" alt={look.name} loading="eager" decoding="async" style={style} onError={(event) => { const image = event.currentTarget; if (look.fallbackImage && image.src !== look.fallbackImage) image.src = look.fallbackImage; }} />;
     const modelList = page.models || [];
     const productList = page.products || [];
     const modelImages = modelList.slice(0, page.mode === 'circle' ? 12 : 5);
