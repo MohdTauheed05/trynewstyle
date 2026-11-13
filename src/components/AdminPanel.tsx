@@ -66,7 +66,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [loginError, setLoginError] = useState('');
 
   // Active Tab: Fitting Studio | Clothes | Runway Models | 3D Rail Clothes | Ladies Collection | Ladies 3D Tops | Store Settings & Firebase
-  const [activeTab, setActiveTab] = useState<'fit_studio' | 'clothes' | 'models' | 'rail' | 'ladies' | 'ladies_rail' | 'settings'>('fit_studio');
+  const [activeTab, setActiveTab] = useState<'fit_studio' | 'clothes' | 'models' | 'rail' | 'ladies' | 'ladies_rail' | 'reels' | 'settings'>('fit_studio');
 
   // Ladies Lookbook CRUD State
   const [ladiesPieces, setLadiesPieces] = useState<LadiesPiece[]>(() => getStoredLadiesPieces());
@@ -87,7 +87,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [ladiesRailItems, setLadiesRailItems] = useState<LadiesRailItem[]>(() => getStoredLadiesRailItems());
   const [ladiesRailModalOpen, setLadiesRailModalOpen] = useState(false);
   const [editingLadiesRailItem, setEditingLadiesRailItem] = useState<LadiesRailItem | null>(null);
-  const [ladiesRailForm, setLadiesRailForm] = useState({
+  const [reels, setReels] = useState<ReelItem[]>(() => getStoredReels());\n  const [editingReelId, setEditingReelId] = useState<string | null>(null);\n  const [reelForm, setReelForm] = useState({ title: '', caption: '', videoUrl: '', posterUrl: '', productIds: [] as string[] });\n\n  const [ladiesRailForm, setLadiesRailForm] = useState({
     name: '',
     price: '380.00',
     image: '',
@@ -175,11 +175,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
     window.addEventListener('runway:rail_updated', refreshSharedSections);
     window.addEventListener('runway:ladies_updated', refreshSharedSections);
-    window.addEventListener('runway:ladies_rail_updated', refreshSharedSections);
+    window.addEventListener('runway:ladies_rail_updated', refreshSharedSections);\n    window.addEventListener('runway:reels_updated', refreshSharedSections);
     return () => {
       window.removeEventListener('runway:rail_updated', refreshSharedSections);
       window.removeEventListener('runway:ladies_updated', refreshSharedSections);
-      window.removeEventListener('runway:ladies_rail_updated', refreshSharedSections);
+      window.removeEventListener('runway:ladies_rail_updated', refreshSharedSections);\n      window.removeEventListener('runway:reels_updated', refreshSharedSections);
     };
   }, []);
 
@@ -858,6 +858,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const resetReelForm = () => {
+    setEditingReelId(null);
+    setReelForm({ title: '', caption: '', videoUrl: '', posterUrl: '', productIds: [] });
+  };
+
+  const handleSaveReel = (event: React.FormEvent) => {
+    event.preventDefault();
+    const nextItem: ReelItem = {
+      id: editingReelId || 'reel-' + Date.now(),
+      title: reelForm.title.trim() || 'Style Reel',
+      caption: reelForm.caption.trim(),
+      videoUrl: reelForm.videoUrl.trim(),
+      posterUrl: reelForm.posterUrl.trim(),
+      productIds: reelForm.productIds,
+    };
+    const next = editingReelId ? reels.map((item) => item.id === editingReelId ? nextItem : item) : [...reels, nextItem];
+    setReels(next);
+    saveReels(next);
+    resetReelForm();
+  };
+
+  const editReel = (item: ReelItem) => {
+    setEditingReelId(item.id);
+    setReelForm({ title: item.title, caption: item.caption, videoUrl: item.videoUrl, posterUrl: item.posterUrl, productIds: item.productIds || [] });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const deleteReel = (id: string) => {
+    if (!confirm('Delete this reel from the storefront?')) return;
+    const next = reels.filter((item) => item.id !== id);
+    setReels(next);
+    saveReels(next);
+    if (editingReelId === id) resetReelForm();
+  };
+
   const handleReset = () => {
     if (confirm('Reset all clothes and models to the default catalog dataset?')) {
       const res = resetToDefaults();
@@ -1036,6 +1071,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             }`}
           >
             Ladies 3D Tops ({ladiesRailItems.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('reels')}
+            className={`px-3 py-1.5 transition-colors ${activeTab === 'reels' ? 'bg-white text-black shadow-sm font-semibold' : 'text-neutral-600 hover:text-black'}`}
+          >
+            Reels ({reels.length})
           </button>
           <button
             type="button"
@@ -1975,6 +2017,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB: REELS COVERFLOW */}
+        {/* ================================================================== */}
+        {activeTab === 'reels' && (
+          <div className="space-y-6 max-w-5xl">
+            <div className="bg-white border border-[#e4e4e4] p-6">
+              <h2 className="text-base font-semibold">3D Reels Coverflow</h2>
+              <p className="text-xs text-neutral-500 mt-1">Add a hosted video URL, a poster image URL, and the shop products featured in the reel. Reels appear at the end of your storefront and save to the shared store database.</p>
+            </div>
+            <form onSubmit={handleSaveReel} className="bg-white border border-[#e4e4e4] p-6 space-y-4 text-xs">
+              <h3 className="font-semibold uppercase tracking-wider">{editingReelId ? 'Edit reel' : 'Add a reel'}</h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <label className="grid gap-1">Reel title<input required value={reelForm.title} onChange={(e) => setReelForm({ ...reelForm, title: e.target.value })} className="border p-2.5" placeholder="The City Edit" /></label>
+                <label className="grid gap-1">Video URL<input required type="url" value={reelForm.videoUrl} onChange={(e) => setReelForm({ ...reelForm, videoUrl: e.target.value })} className="border p-2.5" placeholder="https://..." /></label>
+                <label className="grid gap-1">Cover image URL<input type="url" value={reelForm.posterUrl} onChange={(e) => setReelForm({ ...reelForm, posterUrl: e.target.value })} className="border p-2.5" placeholder="https://..." /></label>
+                <label className="grid gap-1">Caption<input value={reelForm.caption} onChange={(e) => setReelForm({ ...reelForm, caption: e.target.value })} className="border p-2.5" placeholder="A little story about this look" /></label>
+              </div>
+              <div>
+                <div className="font-semibold mb-2">Products in this reel</div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-52 overflow-auto border p-3">
+                  {products.map((product) => <label key={product.id} className="flex items-center gap-2 text-neutral-700"><input type="checkbox" checked={reelForm.productIds.includes(product.id)} onChange={(e) => setReelForm({ ...reelForm, productIds: e.target.checked ? [...reelForm.productIds, product.id] : reelForm.productIds.filter((id) => id !== product.id) })} /><span className="truncate">{product.name}</span></label>)}
+                  {!products.length && <span className="text-neutral-500">Add products in Clothes Inventory first.</span>}
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                {editingReelId && <button type="button" onClick={resetReelForm} className="px-4 py-2 border">Cancel</button>}
+                <button type="submit" className="px-5 py-2 bg-black text-white font-semibold">{editingReelId ? 'Save reel' : 'Add reel'}</button>
+              </div>
+            </form>
+            <div className="space-y-3">
+              {reels.map((item, index) => <article key={item.id} className="bg-white border p-4 flex items-center gap-4">
+                {item.posterUrl ? <img src={item.posterUrl} alt="" className="w-16 h-20 object-cover rounded" /> : <div className="w-16 h-20 bg-neutral-100 grid place-items-center text-xl">▶</div>}
+                <div className="min-w-0 flex-1"><div className="text-xs text-neutral-400">REEL {String(index + 1).padStart(2, '0')}</div><h3 className="font-semibold truncate">{item.title}</h3><p className="text-xs text-neutral-500 truncate">{item.videoUrl}</p><p className="text-xs text-neutral-500">{item.productIds.length} linked products</p></div>
+                <button type="button" onClick={() => editReel(item)} className="text-xs underline">Edit</button>
+                <button type="button" onClick={() => deleteReel(item.id)} className="text-xs text-red-600 underline">Delete</button>
+              </article>)}
             </div>
           </div>
         )}
