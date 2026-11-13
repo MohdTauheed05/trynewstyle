@@ -226,7 +226,7 @@ export const CircleLookbook: React.FC<CircleLookbookProps> = ({ looks, products,
   ) : <img src={entry.image} alt={label ? entry.name : ''} draggable={false} loading="lazy" />;
 
   return (
-    <section className="circle-lookbook" aria-label="Circle runway lookbook" onWheel={handleWheel}>
+    <section id="circle-lookbook" className="circle-lookbook" aria-label="Circle runway lookbook" onWheel={handleWheel}>
       <style>{`
         .circle-lookbook{--ink:#151515;--muted:#757575;position:relative;isolation:isolate;height:100svh;min-height:620px;max-height:1000px;overflow:hidden;background:#fff;color:var(--ink);padding:0 24px}
         .circle-lookbook *{box-sizing:border-box}.cl-top{height:58px;position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e6e6e6;font:10px/1 Arial,sans-serif;letter-spacing:.13em}
