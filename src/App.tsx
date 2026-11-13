@@ -11,6 +11,7 @@ import { VirtualStudio } from './components/VirtualStudio';
 import { CircleLookbook } from './components/CircleLookbook';
 import { ProductSpotlightCarousel } from './components/ProductSpotlightCarousel';
 import { PageRibbonSection } from './components/PageRibbonSection';
+import { DEFAULT_LOOKS } from './data/defaultCatalog';
 import { Look, Product } from './types';
 import { getStoredLooks, getStoredProducts, saveLooks, saveProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
@@ -228,6 +229,34 @@ export default function App() {
       }),
     };
     return <OrderPage order={orderWithPhotos} />;
+  }
+
+  const ribbonPreview = new URLSearchParams(window.location.search).get('ribbonPreview');
+  if (ribbonPreview === 'men-studio') {
+    return (
+      <main style={{ width: 1280, height: 820, overflow: 'hidden' }}>
+        <RunwaySection
+          looks={mensRunwayLooks.length ? mensRunwayLooks : DEFAULT_LOOKS}
+          products={products}
+          shopName={settings.shopName}
+          shopTagline={settings.shopTagline}
+          currencySymbol={currentCurrency}
+          onOpenBag={() => {}}
+        />
+      </main>
+    );
+  }
+  if (ribbonPreview === 'circle-lookbook') {
+    return (
+      <main style={{ width: 1280, height: 820, overflow: 'hidden' }}>
+        <CircleLookbook
+          shopName={settings.shopName}
+          currencySymbol={currentCurrency}
+          looks={looks.length ? looks : DEFAULT_LOOKS}
+          products={products}
+        />
+      </main>
+    );
   }
 
   return (
