@@ -30,21 +30,16 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName }
     if (!stage) return;
     let frame = 0;
     let previousTime = 0;
-    let visible = true;
+    let visible = false;
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     let reducedMotion = motionQuery.matches;
     const updateMotionPreference = () => { reducedMotion = motionQuery.matches; };
     motionQuery.addEventListener?.('change', updateMotionPreference);
-    const observer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      if (visible) previousTime = 0;
-    }, { threshold: 0.05 });
-    observer?.observe(stage);
 
     const animate = (time: number) => {
-      frame = requestAnimationFrame(animate);
+      frame = 0;
       if (!visible || document.hidden) {
-        previousTime = time;
+        previousTime = 0;
         return;
       }
       const delta = previousTime ? Math.min(48, time - previousTime) : 16;
@@ -67,23 +62,48 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName }
         const relative = ((((index - phaseRef.current + half) % count) + count) % count) - half;
         const distance = Math.abs(relative);
         const x = width / 2 + relative * step;
-        const float = Math.sin(time * 0.0015 + index * 1.37) * 9;
+        const float = reducedMotion ? 0 : Math.sin(time * 0.0015 + index * 1.37) * 9;
         const y = height * 0.55 + Math.sin(relative * 0.72) * Math.min(62, height * 0.08) + float;
         const z = -Math.min(distance, 4) * 82;
         const rotateY = relative * -14;
-        const rotateZ = Math.sin(relative * 0.6) * -2.8 + Math.sin(time * 0.001 + index) * 0.4;
+        const rotateZ = relative * -1.7 + (reducedMotion ? 0 : Math.sin(time * 0.001 + index) * 0.4);
         const scale = 1 - Math.min(distance, 4) * 0.085;
         const opacity = Math.max(0.36, 1 - Math.max(0, distance - 2.4) * 0.23);
         card.style.transform = 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px) translate(-50%,-50%) rotateY(' + rotateY + 'deg) rotateZ(' + rotateZ + 'deg) scale(' + scale + ')';
         card.style.zIndex = String(100 - Math.round(distance * 10));
         card.style.opacity = String(opacity);
       });
+      frame = requestAnimationFrame(animate);
     };
-    frame = requestAnimationFrame(animate);
+
+    const start = () => {
+      if (!frame && visible && !document.hidden) {
+        previousTime = 0;
+        frame = requestAnimationFrame(animate);
+      }
+    };
+    const stop = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      previousTime = 0;
+    };
+    const observer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) start();
+      else stop();
+    }, { threshold: 0.05 });
+    const onVisibilityChange = () => document.hidden ? stop() : start();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    if (observer) observer.observe(stage);
+    else {
+      visible = true;
+      start();
+    }
 
     return () => {
-      cancelAnimationFrame(frame);
+      stop();
       observer?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       motionQuery.removeEventListener?.('change', updateMotionPreference);
     };
   }, [pages.length]);
