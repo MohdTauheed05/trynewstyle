@@ -39,6 +39,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const wheelRef = useRef(0);
   const dragRef = useRef<{ x: number; phase: number } | null>(null);
   const draggedRef = useRef(false);
+  const cardHoveredRef = useRef(false);
 
   const pages = useMemo<PageItem[]>(() => {
     const availableLooks = looks.length ? looks : DEFAULT_LOOKS;
@@ -120,7 +121,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       const height = stage.clientHeight || window.innerHeight;
       const mobile = width < 680;
       const step = Math.min(width * (mobile ? 0.34 : 0.21), mobile ? 150 : 380);
-      if (!reducedMotion && !dragRef.current) phaseRef.current += delta * 0.00028;
+      if (!reducedMotion && !dragRef.current && !cardHoveredRef.current) phaseRef.current += delta * 0.00028;
       phaseRef.current += wheelRef.current;
       wheelRef.current *= 0.86;
       if (Math.abs(wheelRef.current) < 0.0001) wheelRef.current = 0;
@@ -205,7 +206,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
     if (!dragRef.current) return;
     const distance = event.clientX - dragRef.current.x;
-    if (Math.abs(distance) > 18) draggedRef.current = true;
+    if (Math.abs(distance) > 32) draggedRef.current = true;
     const width = stageRef.current?.clientWidth || window.innerWidth;
     const step = Math.min(width * (width < 680 ? 0.34 : 0.21), width < 680 ? 150 : 380);
     phaseRef.current = dragRef.current.phase - distance / step;
@@ -283,12 +284,15 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
               ref={(node) => { cardRefs.current[PAGES.findIndex((entry) => entry.id === page.id)] = node; }}
               className="pr-card"
               href={'#' + page.id}
+              onPointerEnter={() => { cardHoveredRef.current = true; }}
+              onPointerLeave={() => { cardHoveredRef.current = false; }}
               onClick={(event) => {
                 if (draggedRef.current) {
                   event.preventDefault();
                   return;
                 }
                 event.preventDefault();
+                event.stopPropagation();
                 const target = document.getElementById(page.id);
                 if (!target) {
                   window.location.assign('/#' + page.id);
