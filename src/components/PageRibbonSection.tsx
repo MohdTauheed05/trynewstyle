@@ -202,7 +202,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
         ) : page.mode === 'circle' ? (
           <div className="pr-shot-circle">
             <i className="pr-shot-orbit" aria-hidden="true" />
-            {modelImages.map((look, index) => <img key={look.id} src={cardImage(look)} alt="" loading="lazy" style={{ '--model-index': index, '--model-count': modelImages.length } as React.CSSProperties} />)}
+            {modelImages.map((look, index) => { const angle = (index / Math.max(1, modelImages.length)) * Math.PI * 2 - Math.PI / 2; return <img key={look.id} src={cardImage(look)} alt="" loading="lazy" style={{ left: (50 + Math.cos(angle) * 38) + '%', top: (50 + Math.sin(angle) * 37) + '%' }} />; })}
             <span>STAY OUT OF THE LOOP</span>
           </div>
         ) : (
