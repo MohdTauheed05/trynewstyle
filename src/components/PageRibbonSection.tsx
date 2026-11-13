@@ -9,7 +9,7 @@ interface PageRibbonSectionProps {
   products: Product[];
 }
 
-type RibbonModel = { id: string; name: string; image: string };
+type RibbonModel = { id: string; name: string; image: string; crop?: [number, number, number, number] };
 
 type PageItem = {
   id: string;
@@ -45,16 +45,12 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     const men: RibbonModel[] = availableLooks
       .filter((look) => !look.modelGroup || look.modelGroup.toLowerCase() === 'men')
       .map((look) => ({ id: look.id, name: look.name, image: look.srcset1080 || look.src640 }));
-    const ladies: RibbonModel[] = LADIES_LOOK_BOUNDS.map(([x0, x1], index) => {
-      const width = x1 - x0;
-      const height = LADIES_MODEL_Y1 - LADIES_MODEL_Y0;
-      const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + x0 + ' ' + LADIES_MODEL_Y0 + ' ' + width + ' ' + height + '"><image href="' + LADIES_MODELS_SHEET.replaceAll('&', '&amp;') + '" width="960" height="540"/></svg>';
-      return {
-        id: 'ladies-model-' + (index + 1),
-        name: 'Ladies Look ' + String(index + 1).padStart(2, '0'),
-        image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
-      };
-    });
+    const ladies: RibbonModel[] = LADIES_LOOK_BOUNDS.map(([x0, x1], index) => ({
+      id: 'ladies-model-' + (index + 1),
+      name: 'Ladies Look ' + String(index + 1).padStart(2, '0'),
+      image: LADIES_MODELS_SHEET,
+      crop: [x0, LADIES_MODEL_Y0, x1 - x0, LADIES_MODEL_Y1 - LADIES_MODEL_Y0],
+    }));
     const westernFiles = [
       ['Denim Maxi', 'hf_20261112_034542_a6430ecf-9862-412c-8ef6-5745115bd78c.png'],
       ['Cloud Set', 'hf_20261112_034738_73282737-acc8-41e9-a822-96c663e27b6c.png'],
@@ -218,6 +214,9 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   };
 
   const renderShot = (page: PageItem) => {
+    const modelImage = (look: RibbonModel, className: string, style?: React.CSSProperties) => look.crop
+              ? <svg key={look.id} className={className + ' pr-shot-model-svg'} viewBox={look.crop.join(' ')} preserveAspectRatio="xMidYMax meet" style={style} aria-label={look.name}><image href={look.image} width="960" height="540" /></svg>
+              : <img key={look.id} className={className} src={look.image} alt={look.name} loading="eager" decoding="async" style={style} />;
     const modelList = page.models || [];
     const productList = page.products || [];
         const modelImages = modelList.slice(0, page.mode === 'circle' ? 12 : 5);
@@ -242,13 +241,13 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
         ) : page.mode === 'circle' ? (
           <div className="pr-shot-circle">
             <i className="pr-shot-orbit" aria-hidden="true" />
-            {modelImages.map((look, index) => { const angle = (index / Math.max(1, modelImages.length)) * Math.PI * 2 - Math.PI / 2; return <img key={look.id} src={look.image} alt={look.name} loading="eager" decoding="async" style={{ left: (50 + Math.cos(angle) * 38) + '%', top: (50 + Math.sin(angle) * 37) + '%' }} />; })}
+            {modelImages.map((look, index) => { const angle = (index / Math.max(1, modelImages.length)) * Math.PI * 2 - Math.PI / 2; return modelImage(look, '', { left: (50 + Math.cos(angle) * 38) + '%', top: (50 + Math.sin(angle) * 37) + '%' }); })}
             <span>STAY OUT OF THE LOOP</span>
           </div>
         ) : (
           <div className="pr-shot-runway">
             <div className="pr-shot-models">
-              {modelImages.map((look, index) => <img key={look.id} className={index === 0 ? 'is-lead' : ''} src={look.image} alt={look.name} loading="eager" decoding="async" />)}
+              {modelImages.map((look, index) => modelImage(look, index === 0 ? 'is-lead' : ''))}
               {!modelImages.length && <div className="pr-shot-empty">Add models in Admin</div>}
             </div>
             {page.mode !== 'western' && productImages.length > 0 && (
