@@ -94,7 +94,8 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName }
   const handlePointerDown = (event: React.PointerEvent<HTMLElement>) => {
     dragRef.current = { x: event.clientX, phase: phaseRef.current };
     draggedRef.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    const cardTarget = (event.target as HTMLElement).closest('.pr-card') as HTMLElement | null;
+    (cardTarget || event.currentTarget).setPointerCapture(event.pointerId);
     event.currentTarget.classList.add('is-dragging');
   };
   const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
