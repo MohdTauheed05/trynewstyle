@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { RunwaySection } from './components/RunwaySection';
 import { BagDialog } from './components/BagDialog';
@@ -22,7 +22,6 @@ import { getStoredLadiesRailItems, saveLadiesRailItems } from './services/ladies
 
 
 export default function App() {
-  const pagePreview = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('pagePreview') : null;
   const [currentView, setCurrentView] = useState<'runway' | 'admin'>(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
@@ -126,7 +125,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has('pagePreview')) return;
     let active = true;
     const loadSharedStoreData = async () => {
       const [cloudSettings, catalog, rail, ladies, ladiesRail] = await Promise.all([
@@ -230,44 +228,6 @@ export default function App() {
       }),
     };
     return <OrderPage order={orderWithPhotos} />;
-  }
-
-  if (pagePreview) {
-    let previewSection: ReactNode = null;
-    const previewBagAction = () => {};
-    switch (pagePreview) {
-      case 'men-studio':
-        previewSection = <div id="men-studio"><RunwaySection looks={mensRunwayLooks} products={products} shopName={settings.shopName} shopTagline={settings.shopTagline} currencySymbol={currentCurrency} onOpenBag={previewBagAction} /></div>;
-        break;
-      case 'offcut-rail-section':
-        previewSection = <OffcutRailSection shopName={settings.shopName} shopTagline={settings.shopTagline} currencySymbol={currentCurrency} whatsappNumber={settings.whatsappNumber} onOpenBag={previewBagAction} />;
-        break;
-      case 'ladies-section':
-        previewSection = <LadiesDepthLookbook shopName={settings.shopName} currencySymbol={currentCurrency} cartCount={cartCount} onOpenBag={previewBagAction} onNavigateHome={previewBagAction} />;
-        break;
-      case 'ladies-rail-section':
-        previewSection = <LadiesRailSection shopName={settings.shopName} currencySymbol={currentCurrency} whatsappNumber={settings.whatsappNumber} onOpenBag={previewBagAction} />;
-        break;
-      case 'virtual-studio':
-        previewSection = <VirtualStudio shopName={settings.shopName} currencySymbol={currentCurrency} products={products} looks={looks} />;
-        break;
-      case 'circle-lookbook':
-        previewSection = <CircleLookbook shopName={settings.shopName} currencySymbol={currentCurrency} looks={looks} products={products} />;
-        break;
-      case 'product-collection':
-        previewSection = <ProductSpotlightCarousel shopName={settings.shopName} currencySymbol={currentCurrency} products={products} />;
-        break;
-      default:
-        break;
-    }
-    if (previewSection) {
-      return (
-        <div className="page-ribbon-preview-shell">
-          <Header shopName={settings.shopName} onNavigateHome={previewBagAction} cartCount={cartCount} onOpenBag={previewBagAction} />
-          <main>{previewSection}</main>
-        </div>
-      );
-    }
   }
 
   return (
