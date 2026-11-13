@@ -15,17 +15,6 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
   const dragRef = useRef<{ x: number; phase: number } | null>(null);
   const draggedRef = useRef(false);
 
-  const menLook = looks.find((look) => !look.modelGroup || look.modelGroup === 'men');
-  const ladiesLook = looks.find((look) => look.modelGroup === 'ladies');
-  const westernLook = looks.find((look) => look.modelGroup === 'western');
-  const fallbackLook = looks[0];
-  const tops = useMemo(() => products.filter((product) =>
-    product.category === 'top' || product.category === 'hoodie' || product.category === 'sweatshirt'
-  ), [products]);
-  const dresses = useMemo(() => products.filter((product) =>
-    product.virtualStudioLook || product.category === 'accessory'
-  ), [products]);
-
   const pages = useMemo(() => [
     { id: 'men-studio', title: "Men's Studio", kicker: '01 / RUNWAY' },
     { id: 'offcut-rail-section', title: '3D Hanger T-Shirts', kicker: '02 / CHROME RAIL' },
@@ -35,16 +24,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     { id: 'circle-lookbook', title: 'Circle Model Page', kicker: '06 / CIRCLE LOOKBOOK' },
     { id: 'product-collection', title: 'All Products', kicker: '07 / FULL COLLECTION' },
   ], []);
-
-  const pageContext = useMemo(() => ({
-    menLook: menLook?.srcset1080 || menLook?.src640 || products[0]?.image,
-    tshirt: tops[0]?.image || products[1]?.image || menLook?.src640,
-    ladies: ladiesLook?.srcset1080 || ladiesLook?.src640 || fallbackLook?.src640,
-    dress: dresses[0]?.image || products[2]?.image || ladiesLook?.src640,
-    western: westernLook?.srcset1080 || westernLook?.src640 || ladiesLook?.src640,
-    circle: looks[1]?.srcset1080 || looks[1]?.src640 || fallbackLook?.src640,
-    products: products[0]?.image || fallbackLook?.src640,
-  }), [menLook, tops, products, ladiesLook, fallbackLook, dresses, westernLook, looks]);
+  const counterRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -80,6 +60,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       if (Math.abs(wheelRef.current) < 0.0001) wheelRef.current = 0;
 
       const count = pages.length;
+          if (counterRef.current) counterRef.current.textContent = String(activeIndex + 1).padStart(2, '0') + ' / ' + String(pages.length).padStart(2, '0');
       cardRefs.current.forEach((card, index) => {
         if (!card) return;
         const half = count / 2;
@@ -111,7 +92,6 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     wheelRef.current += (event.deltaY || event.deltaX) / 380 * 0.34;
   };
   const handlePointerDown = (event: React.PointerEvent<HTMLElement>) => {
-    if ((event.target as HTMLElement).closest('a')) return;
     dragRef.current = { x: event.clientX, phase: phaseRef.current };
     draggedRef.current = false;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -177,6 +157,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
                   loading="lazy"
                   tabIndex={-1}
                   aria-hidden="true"
+                  style={{ pointerEvents: 'none' }}
                 />
               </div>
               <div className="pr-card-copy"><span>{page.kicker}</span><strong>{page.title}</strong><b aria-hidden="true">↗</b></div>
@@ -185,7 +166,7 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
         </div>
         <div className="pr-caption">
           <span>CONTINUOUS PAGE TOUR</span>
-          <span>{String(activeIndex + 1).padStart(2, '0')} / {String(pages.length).padStart(2, '0')}</span>
+          <span ref={counterRef}>01 / 07</span>
         </div>
         <div className="pr-progress"><span /></div>
       </div>
