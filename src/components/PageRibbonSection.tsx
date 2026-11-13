@@ -224,19 +224,6 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
     window.setTimeout(() => { draggedRef.current = false; }, 100);
   };
 
-  const navigateToPage = (pageId: string) => {
-    const target = document.getElementById(pageId);
-    const hash = '#' + pageId;
-    if (window.location.hash !== hash) window.history.pushState(null, '', hash);
-    if (!target) {
-      window.location.assign('/' + hash);
-      return;
-    }
-    const headerHeight = Number.parseFloat(window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64;
-    const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-  };
-
   const renderShot = (page: PageItem) => {
     if (page.id === 'men-studio' || page.id === 'circle-lookbook') {
       return (
@@ -318,11 +305,13 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
               href={'#' + page.id}
               onPointerEnter={() => { cardHoveredRef.current = true; }}
               onPointerLeave={() => { cardHoveredRef.current = false; }}
-              onPointerUp={() => {
-                if (!draggedRef.current) navigateToPage(page.id);
-              }}
               onClick={(event) => {
-                if (draggedRef.current) event.preventDefault();
+                if (draggedRef.current) {
+                  event.preventDefault();
+                  return;
+                }
+                event.preventDefault();
+                window.location.assign('/#' + page.id);
               }}
               aria-label={'Open ' + page.title}
               draggable={false}
