@@ -38,6 +38,7 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
     shift(delta > 0 ? 1 : -1);
   };
   const onPointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest('.rf-controls,button')) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     setDragStart(event.clientX);
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* ignore */ }
@@ -87,12 +88,11 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
             const rotate = offset * (mobile ? -7 : -9);
             const scale = Math.max(.68, 1 - abs * (mobile ? .14 : .13));
             const opacity = Math.max(.28, 1 - abs * .22);
-            return <button key={reel.id} type="button" className={'rf-card' + (offset === 0 ? ' is-active' : '')} aria-label={'Play ' + reel.title} onClick={() => { if (offset) shift(offset); }}>
+            return <div key={reel.id} role={offset === 0 ? undefined : 'button'} tabIndex={offset === 0 ? -1 : 0} className={'rf-card' + (offset === 0 ? ' is-active' : '')} aria-label={offset === 0 ? undefined : 'Show ' + reel.title} style={{transform:'translate(-50%,-50%) translateX(' + x + 'px) translateY(' + y + 'px) rotateY(' + rotate + 'deg) scale(' + scale + ')',zIndex:10-abs,opacity}} onClick={() => { if (offset) shift(offset); }} onKeyDown={(event) => { if (offset && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); shift(offset); } }}>
               {offset === 0 ? <video src={reel.videoUrl} poster={reel.posterUrl || undefined} autoPlay muted loop playsInline controls /> : reel.posterUrl ? <img src={reel.posterUrl} alt="" loading="lazy" /> : <div />}
               <span className="rf-card-shade"/><span className="rf-card-index">REEL {String(index + 1).padStart(2,'0')}</span>
               {offset !== 0 && <span className="rf-card-play" aria-hidden="true">▶</span>}<span className="rf-card-title">{reel.title}</span>
-              <span style={{position:'absolute',inset:0,transform:'translateX(' + x + 'px) translateY(' + y + 'px) rotateY(' + rotate + 'deg) scale(' + scale + ')',zIndex:10,pointerEvents:'none'}} />
-            </button>;
+            </div>;
           })}
           <div className="rf-controls"><button type="button" className="rf-arrow" onClick={() => shift(-1)} aria-label="Previous reel">‹</button><div className="rf-dots">{reels.map((reel,index)=><button key={reel.id} type="button" className={'rf-dot'+(index===activeIndex?' active':'')} aria-label={'Show reel '+(index+1)} onClick={() => setActiveIndex(index)} />)}</div><button type="button" className="rf-arrow" onClick={() => shift(1)} aria-label="Next reel">›</button></div>
         </div>
