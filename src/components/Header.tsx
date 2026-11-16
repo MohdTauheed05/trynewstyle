@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Center: EXACTLY 3 Nav Headers */}
         <nav
           aria-label="Main Navigation"
-          className="hidden sm:flex items-center gap-6 md:gap-9 lg:gap-12 font-['Michroma'] uppercase text-[10.5px] lg:text-[11.5px] tracking-[0.16em] text-[#828b96]"
+          className="hidden sm:flex items-center gap-4 md:gap-6 lg:gap-8 xl:gap-10 font-['Michroma'] uppercase text-[10px] lg:text-[11px] tracking-[0.14em] text-[#828b96]"
         >
           <a
             href="#root"
@@ -126,9 +126,20 @@ export const Header: React.FC<HeaderProps> = ({
               e.preventDefault();
               scrollTo('virtual-studio');
             }}
-            className="hover:text-[#16191f] transition-colors cursor-pointer whitespace-nowrap"
+            className="hover:text-[#16191f] transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
             WESTERN WEAR 3D
+          </a>
+
+          <a
+            href="#western-orbit-studio"
+            onClick={(e) => {
+              e.preventDefault();
+              scrollTo('western-orbit-studio');
+            }}
+            className="hover:text-[#16191f] transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            VIRTUAL STUDIO
           </a>
 
         </nav>
@@ -221,6 +232,16 @@ export const Header: React.FC<HeaderProps> = ({
           className="px-2 py-1 rounded bg-[#f3f6fa] hover:text-[#16191f] text-center whitespace-nowrap"
         >
           WESTERN 3D
+        </a>
+        <a
+          href="#western-orbit-studio"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollTo('western-orbit-studio');
+          }}
+          className="px-2 py-1 rounded bg-[#f3f6fa] hover:text-[#16191f] text-center whitespace-nowrap"
+        >
+          VIRTUAL STUDIO
         </a>
       </nav>
     </header>

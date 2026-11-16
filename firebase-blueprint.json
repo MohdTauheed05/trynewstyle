@@ -8,9 +8,10 @@
         "id": { "type": "string", "description": "Unique product identifier" },
         "name": { "type": "string", "description": "Display name of the garment" },
         "vendor": { "type": "string", "description": "Brand vendor name" },
-        "price": { "type": "number", "description": "Price in USD" },
+        "price": { "type": "number", "description": "Price in store currency" },
         "image": { "type": "string", "description": "Image URL or data URI" },
         "category": { "type": "string", "description": "Garment category e.g. top, shoes, hoodie" },
+        "virtualStudioLook": { "type": "string", "description": "Matched Western Wear 3D female look name" },
         "sizes": { "type": "array", "description": "Available size labels" },
         "fitDescription": { "type": "string", "description": "Styling and fit description" },
         "defaultPinX": { "type": "number", "description": "Model fit pin horizontal coordinate percentage" },
@@ -27,10 +28,32 @@
         "name": { "type": "string", "description": "Look title e.g. The City Edit" },
         "description": { "type": "string", "description": "Look styling description" },
         "src640": { "type": "string", "description": "Full-body model image URL" },
+        "modelGroup": { "type": "string", "enum": ["men", "ladies", "western"], "description": "Runway model group" },
         "productIds": { "type": "array", "description": "Array of product IDs in this look" },
         "pins": { "type": "array", "description": "Numbered pins with coordinates" }
       },
       "required": ["id", "name", "src640", "productIds"]
+    },
+    "MaisonEditProduct": {
+      "title": "MaisonEditProduct",
+      "description": "Modular Western Wear / Maison Edit garment item with layer key or custom image",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique Maison Edit item ID" },
+        "slotKey": { "type": "string", "description": "Optional compositor layer key (t1..t3, k1..k3, s1..s3, g1..g3)" },
+        "category": { "type": "string", "enum": ["tops", "skirts", "shoes", "bags"], "description": "Modular try-on category" },
+        "store": { "type": "string", "enum": ["norra", "lune", "meridian", "ode"], "description": "Storefront label" },
+        "name": { "type": "string", "description": "Display name of the piece" },
+        "price": { "type": "number", "description": "Unit price" },
+        "sheetCol": { "type": "number", "description": "Product sheet column index" },
+        "sheetRow": { "type": "number", "description": "Product sheet row index" },
+        "customImage": { "type": "string", "description": "Optional custom product image URL" },
+        "tags": { "type": "array", "description": "Style mood tags" },
+        "sizes": { "type": "array", "description": "Available sizes" },
+        "savedDefault": { "type": "boolean", "description": "Default saved state" },
+        "fitDescription": { "type": "string", "description": "Fabric and fit note" }
+      },
+      "required": ["id", "category", "store", "name", "price"]
     },
     "Order": {
       "title": "Order",
@@ -43,24 +66,57 @@
         "channel": { "type": "string", "description": "whatsapp or web" }
       },
       "required": ["orderId", "items", "total"]
+    },
+    "OrderShare": {
+      "title": "OrderShare",
+      "description": "Public token-addressed order slip snapshot",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "description": "Unique order code" },
+        "date": { "type": "string", "description": "ISO date timestamp" },
+        "shopName": { "type": "string", "description": "Storefront display name" },
+        "items": { "type": "array", "description": "Ordered items summary" },
+        "total": { "type": "number", "description": "Order total" },
+        "currencySymbol": { "type": "string", "description": "Currency symbol or code" }
+      },
+      "required": ["orderId", "date", "shopName", "items", "total", "currencySymbol"]
+    },
+    "StoreSettingsDoc": {
+      "title": "StoreSettingsDoc",
+      "description": "Shared store settings and storefront section payloads",
+      "type": "object",
+      "properties": {
+        "shopName": { "type": "string", "description": "Storefront name" },
+        "shopTagline": { "type": "string", "description": "Runway tagline" },
+        "whatsappNumber": { "type": "string", "description": "WhatsApp order phone number" },
+        "currencySymbol": { "type": "string", "description": "Currency symbol or code" }
+      }
     }
   },
   "firestore": {
     "/products/{productId}": {
-      "schema": "Product",
+      "schema": { "$ref": "#/entities/Product" },
       "description": "Garments and shoes available in the shop"
     },
     "/looks/{lookId}": {
-      "schema": "Look",
-      "description": "Runway models and styled looks"
+      "schema": { "$ref": "#/entities/Look" },
+      "description": "Runway models and styled looks (men, ladies, western)"
+    },
+    "/maison_edit_items/{itemId}": {
+      "schema": { "$ref": "#/entities/MaisonEditProduct" },
+      "description": "Modular Maison Edit Western Wear try-on garments"
     },
     "/settings/{settingId}": {
-      "schema": "object",
-      "description": "Store settings, shop name, and contact details"
+      "schema": { "$ref": "#/entities/StoreSettingsDoc" },
+      "description": "Store settings, shop branding, and shared storefront section catalogs"
     },
     "/orders/{orderId}": {
-      "schema": "Order",
+      "schema": { "$ref": "#/entities/Order" },
       "description": "Submitted customer orders"
+    },
+    "/orderShares/{token}": {
+      "schema": { "$ref": "#/entities/OrderShare" },
+      "description": "Publicly shareable token-guarded order slips"
     }
   }
 }

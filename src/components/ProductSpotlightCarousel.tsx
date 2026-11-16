@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LadiesPiece, Product } from '../types';
+import { BagItemCrop, LadiesPiece, MaisonEditProduct, Product } from '../types';
 import { addBagItem } from '../services/bagStorage';
 import { formatCurrency } from '../services/storeSettings';
 import { LADIES_PIECES_SHEET, getStoredLadiesPieces } from '../services/ladiesStorage';
 import { LadiesRailItem, getStoredLadiesRailItems } from '../services/ladiesRailStorage';
 import { RailItem, getStoredRailItems } from '../services/railStorage';
+import { ME_PRODUCT_SHEET_URL, getMaisonEditCrop, getStoredMaisonEditItems } from '../services/maisonEditStorage';
 
 interface ProductSpotlightCarouselProps {
   products: Product[];
@@ -20,9 +21,9 @@ type SpotlightProduct = {
   description?: string;
   sizes: string[];
   url: string;
-  crop?: LadiesPiece['box'];
+  crop?: BagItemCrop;
   spriteIndex?: number;
-  source: 'catalog' | 'rail' | 'ladies-piece' | 'ladies-rail';
+  source: 'catalog' | 'rail' | 'ladies-piece' | 'ladies-rail' | 'maison-edit';
 };
 
 const RAIL_SHEET_URL = 'https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20261107_130252_7b1b8485-d5c5-440c-8921-f5ae01054c6a.png&w=2048&q=90';
@@ -31,6 +32,7 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
   const [railItems, setRailItems] = useState<RailItem[]>(() => getStoredRailItems());
   const [ladiesPieces, setLadiesPieces] = useState<LadiesPiece[]>(() => getStoredLadiesPieces());
   const [ladiesRailItems, setLadiesRailItems] = useState<LadiesRailItem[]>(() => getStoredLadiesRailItems());
+  const [maisonEditItems, setMaisonEditItems] = useState<MaisonEditProduct[]>(() => getStoredMaisonEditItems());
   const [selected, setSelected] = useState<SpotlightProduct | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -45,15 +47,18 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
       setRailItems(getStoredRailItems());
       setLadiesPieces(getStoredLadiesPieces());
       setLadiesRailItems(getStoredLadiesRailItems());
+      setMaisonEditItems(getStoredMaisonEditItems());
     };
     window.addEventListener('runway:rail_updated', sync);
     window.addEventListener('runway:ladies_updated', sync);
     window.addEventListener('runway:ladies_rail_updated', sync);
+    window.addEventListener('runway:maison_edit_updated', sync);
     window.addEventListener('runway:catalog_updated', sync);
     return () => {
       window.removeEventListener('runway:rail_updated', sync);
       window.removeEventListener('runway:ladies_updated', sync);
       window.removeEventListener('runway:ladies_rail_updated', sync);
+      window.removeEventListener('runway:maison_edit_updated', sync);
       window.removeEventListener('runway:catalog_updated', sync);
     };
   }, []);
@@ -72,18 +77,35 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
     const ladies = ladiesPieces.map((piece) => ({
       id: piece.id, name: piece.name, price: piece.price, image: piece.customImage || LADIES_PIECES_SHEET,
       description: piece.category || 'Part of the Ladies collection.', sizes: ['One Size'], url: '#',
-      crop: piece.customImage ? undefined : piece.box, source: 'ladies-piece' as const,
+      crop: !piece.customImage && piece.box ? {
+        x: piece.box[0], y: piece.box[2],
+        w: piece.box[1] - piece.box[0], h: piece.box[3] - piece.box[2],
+        sheetW: 960, sheetH: 720,
+      } : undefined,
+      source: 'ladies-piece' as const,
     }));
     const ladiesRail = ladiesRailItems.map((item) => ({
       id: item.id, name: item.name, price: item.price, image: item.image,
-      description: item.fitDescription, sizes: ['One Size'], url: '#', source: 'ladies-rail' as const,
+      description: item.fitDescription, sizes: item.sizes?.length ? item.sizes : ['S', 'M', 'L', 'XL'],
+      url: '#', crop: item.crop, source: 'ladies-rail' as const,
+    }));
+    const maisonEdit = maisonEditItems.map((item) => ({
+      id: `me-${item.id}`,
+      name: item.name,
+      price: item.price,
+      image: item.customImage || ME_PRODUCT_SHEET_URL,
+      description: item.fitDescription || `Styled in Maison Edit (${item.category}).`,
+      sizes: item.sizes?.length ? item.sizes : ['S', 'M', 'L'],
+      url: '#virtual-studio',
+      crop: item.customImage ? undefined : getMaisonEditCrop(item.sheetCol ?? 0, item.sheetRow ?? 0),
+      source: 'maison-edit' as const,
     }));
     const unique = new Map<string, SpotlightProduct>();
-    [...catalog, ...rail, ...ladies, ...ladiesRail].forEach((item) => {
+    [...catalog, ...rail, ...ladies, ...ladiesRail, ...maisonEdit].forEach((item) => {
       if (!unique.has(item.id)) unique.set(item.id, item);
     });
     return [...unique.values()];
-  }, [products, railItems, ladiesPieces, ladiesRailItems]);
+  }, [products, railItems, ladiesPieces, ladiesRailItems, maisonEditItems]);
 
   const addProduct = (product: SpotlightProduct) => {
     addBagItem({
@@ -94,11 +116,7 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
       image: product.image,
       url: product.url,
       quantity: 1,
-      crop: product.crop ? {
-        x: product.crop[0], y: product.crop[2],
-        w: product.crop[1] - product.crop[0], h: product.crop[3] - product.crop[2],
-        sheetW: 960, sheetH: 720,
-      } : undefined,
+      crop: product.crop,
     });
   };
 
@@ -217,9 +235,10 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
 
   const renderProductPhoto = (product: SpotlightProduct, className: string) => {
     if (product.crop) {
+      const c = product.crop;
       return (
-        <svg className={className} viewBox={product.crop[0] + ' ' + product.crop[2] + ' ' + (product.crop[1] - product.crop[0]) + ' ' + (product.crop[3] - product.crop[2])} preserveAspectRatio="xMidYMid meet" aria-label={product.name}>
-          <image href={product.image} width="960" height="720" />
+        <svg className={className} style={{ overflow: 'hidden' }} viewBox={`${c.x} ${c.y} ${c.w} ${c.h}`} preserveAspectRatio="xMidYMid meet" aria-label={product.name}>
+          <image href={product.image} width={c.sheetW} height={c.sheetH} />
         </svg>
       );
     }

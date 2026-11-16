@@ -1,7 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Look, Product } from '../types';
-import { DEFAULT_LOOKS } from '../data/defaultCatalog';
-import { LADIES_LOOK_BOUNDS, LADIES_MODEL_Y0, LADIES_MODEL_Y1, LADIES_MODELS_SHEET } from '../services/ladiesStorage';
 
 interface PageRibbonSectionProps {
   shopName: string;
@@ -9,103 +7,112 @@ interface PageRibbonSectionProps {
   products: Product[];
 }
 
-type RibbonModel = { id: string; name: string; image: string; srcSet?: string; fallbackImage?: string; crop?: [number, number, number, number] };
-
 type PageItem = {
   id: string;
   title: string;
   kicker: string;
-  mode: 'runway' | 'rail' | 'ladies' | 'western' | 'circle' | 'products';
-  models?: RibbonModel[];
-  products?: Product[];
+  routeLabel: string;
 };
 
-const PAGES = [
-  { id: 'men-studio', title: "Men's Studio", kicker: '01 / RUNWAY', mode: 'runway' },
-  { id: 'offcut-rail-section', title: '3D Hanger T-Shirts', kicker: '02 / CHROME RAIL', mode: 'rail' },
-  { id: 'ladies-section', title: 'Ladies Collection', kicker: '03 / LOOKBOOK', mode: 'ladies' },
-  { id: 'ladies-rail-section', title: '3D Hanger Dresses', kicker: '04 / LADIES RAIL', mode: 'rail' },
-  { id: 'virtual-studio', title: 'Western Model', kicker: '05 / WESTERN WEAR', mode: 'western' },
-  { id: 'circle-lookbook', title: 'Circle Model Page', kicker: '06 / CIRCLE LOOKBOOK', mode: 'circle' },
-  { id: 'product-collection', title: 'All Products', kicker: '07 / FULL COLLECTION', mode: 'products' },
-] as const;
+const PAGES: readonly PageItem[] = [
+  { id: 'men-studio', title: "Men's Studio", kicker: '01 / RUNWAY', routeLabel: 'trythelook.studio/mens' },
+  { id: 'offcut-rail-section', title: '3D Hanger T-Shirts', kicker: '02 / CHROME RAIL', routeLabel: 'trythelook.studio/tees-3d' },
+  { id: 'ladies-section', title: 'Ladies Collection', kicker: '03 / LOOKBOOK', routeLabel: 'trythelook.studio/ladies' },
+  { id: 'ladies-rail-section', title: 'Maison Verrel — The Rail', kicker: '04 / GOLD RAIL', routeLabel: 'trythelook.studio/the-rail' },
+  { id: 'virtual-studio', title: 'Western Model', kicker: '05 / WESTERN WEAR', routeLabel: 'trythelook.studio/western' },
+  { id: 'western-orbit-studio', title: 'Virtual Styling Studio', kicker: '06 / WESTERN MODELS', routeLabel: 'trythelook.studio/styling-studio' },
+  { id: 'circle-lookbook', title: 'All Looks Runway', kicker: '07 / FULL ARCHIVE', routeLabel: 'trythelook.studio/archive' },
+  { id: 'product-collection', title: 'All Products', kicker: '08 / FULL COLLECTION', routeLabel: 'trythelook.studio/collection' },
+];
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, looks, products }) => {
-  const stageRef = useRef<HTMLElement | null>(null);
+export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName }) => {
+  const [viewMode, setViewMode] = useState<'circle' | 'flat'>('circle');
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   const phaseRef = useRef(0);
   const wheelRef = useRef(0);
-  const dragRef = useRef<{ x: number; phase: number } | null>(null);
+  const dragRef = useRef<{ x: number; y: number; phase: number } | null>(null);
   const draggedRef = useRef(false);
   const cardHoveredRef = useRef(false);
 
-  const pages = useMemo<PageItem[]>(() => {
-    const availableLooks = looks.length ? looks : DEFAULT_LOOKS;
-    const menLooks = availableLooks.filter((look) => !look.modelGroup || ['men', 'mens', 'male'].includes(look.modelGroup.toLowerCase()));
-    const menSource = menLooks.length ? menLooks : DEFAULT_LOOKS;
-    const men: RibbonModel[] = menSource
-      .filter((look) => Boolean(look.src640 || look.srcset1080))
-      .map((look) => ({ id: look.id, name: look.name, image: look.src640 || look.srcset1080, srcSet: look.src640 && look.srcset1080 ? `${look.src640} 640w, ${look.srcset1080} 1080w` : undefined, fallbackImage: look.srcset1080 }));
-    const ladies: RibbonModel[] = LADIES_LOOK_BOUNDS.map(([x0, x1], index) => ({
-      id: 'ladies-model-' + (index + 1),
-      name: 'Ladies Look ' + String(index + 1).padStart(2, '0'),
-      image: LADIES_MODELS_SHEET,
-      crop: [x0, LADIES_MODEL_Y0, x1 - x0, LADIES_MODEL_Y1 - LADIES_MODEL_Y0],
-    }));
-    const westernFiles = [
-      ['Denim Maxi', 'hf_20261112_034542_a6430ecf-9862-412c-8ef6-5745115bd78c.png'],
-      ['Cloud Set', 'hf_20261112_034738_73282737-acc8-41e9-a822-96c663e27b6c.png'],
-      ['Library Knit', 'hf_20261112_034742_9a8a92fd-79ae-4163-9ffa-14ae2a68717f.png'],
-      ['Lilac Run', 'hf_20261112_034735_4e352e03-ad2b-44d1-9fcf-4b5b9454dc55.png'],
-      ['Satin Night', 'hf_20261112_034738_aeb8ea57-6399-4f3c-b54a-4a57d0bd971e.png'],
-      ['Night Suit', 'hf_20261112_034736_aace5c5f-8c14-4b00-83ba-744dbad2e337.png'],
-      ['Sage Slip', 'hf_20261112_034735_3d9fb69e-b4e0-49f7-a2d4-e592bd616c27.png'],
-      ['Bomber Cargo', 'hf_20261112_034740_3e3c5ad7-689b-46a2-8e09-c7d36a569b9c.png'],
-    ] as const;
-    const studioCdn = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/';
-    const westernPresets: RibbonModel[] = westernFiles.map(([name, file]) => ({
-      id: 'western-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      name,
-      image: 'https://images.higgs.ai/?default=1&output=webp&url=' + encodeURIComponent(studioCdn + file) + '&w=1000&q=85',
-    }));
-    const western: RibbonModel[] = [...westernPresets, ...availableLooks.filter((look) => look.modelGroup?.toLowerCase() === 'western')
-      .map((look) => ({ id: look.id, name: look.name, image: look.srcset1080 || look.src640 }))];
-    const allModels = [...men.slice(0, 4), ...ladies.slice(0, 4), ...western.slice(0, 4)];
-    const tops = products.filter((product) => ['top', 'hoodie', 'sweatshirt'].includes(product.category || ''));
-    const dresses = products.filter((product) => Boolean(product.virtualStudioLook));
-    const matchingProducts = (look?: Look) => look
-      ? products.filter((product) => look.productIds.includes(product.id))
-      : [];
-    const make = (index: number, modelSet: RibbonModel[], productSet: Product[] = []): PageItem => ({
-      ...PAGES[index],
-      mode: PAGES[index].mode,
-      models: modelSet,
-      products: productSet.length ? productSet : products.slice(0, 5),
-    });
+  const pages = useMemo(() => [...PAGES], []);
 
-    return [
-      make(0, men, matchingProducts(availableLooks.find((look) => !look.modelGroup || look.modelGroup.toLowerCase() === 'men'))),
-      make(1, men, tops.length ? tops : products.slice(0, 5)),
-      make(2, ladies),
-      make(3, ladies, dresses.length ? dresses : tops),
-      make(4, western),
-      make(5, allModels.slice(0, 12), products.slice(0, 3)),
-      make(6, [], products),
-    ];
-  }, [looks, products]);
+  const navigateToSection = (sectionId: string) => {
+    const target = document.getElementById(sectionId);
+    window.history.pushState(null, '', '#' + sectionId);
+    if (target) {
+      const headerHeight =
+        Number.parseFloat(
+          window.getComputedStyle(document.documentElement).getPropertyValue('--header-h')
+        ) || 64;
+      const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 4;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+  };
 
+  // Load live preview iframes when section enters viewport
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
 
+    const loadAllPreviews = () => {
+      cardRefs.current.forEach((card) => {
+        if (!card) return;
+        const livePreview = card.querySelector<HTMLIFrameElement>('[data-live-src]');
+        if (livePreview && livePreview.dataset.loaded !== 'true') {
+          livePreview.src = livePreview.dataset.liveSrc || 'about:blank';
+          livePreview.dataset.loaded = 'true';
+        }
+      });
+    };
+
+    const observer =
+      typeof IntersectionObserver === 'undefined'
+        ? null
+        : new IntersectionObserver(
+            ([entry]) => {
+              if (entry.isIntersecting) {
+                loadAllPreviews();
+              }
+            },
+            { threshold: 0.01 }
+          );
+
+    if (observer) observer.observe(stage);
+    else loadAllPreviews();
+
+    return () => observer?.disconnect();
+  }, []);
+
+  // 3D Rounding Circle animation loop (active only in 'circle' mode)
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    if (viewMode === 'flat') {
+      // Clear inline 3D orbital transforms so flat CSS layout sits crisp & still
+      cardRefs.current.forEach((card) => {
+        if (!card) return;
+        card.style.transform = '';
+        card.style.zIndex = '';
+        card.style.opacity = '';
+        card.style.filter = '';
+      });
+      return;
+    }
+
     let frame = 0;
     let previousTime = 0;
-    let visible = false;
+    let visible = true;
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     let reducedMotion = motionQuery.matches;
-    const updateMotionPreference = () => { reducedMotion = motionQuery.matches; };
+    const updateMotionPreference = () => {
+      reducedMotion = motionQuery.matches;
+    };
     motionQuery.addEventListener?.('change', updateMotionPreference);
 
     const animate = (time: number) => {
@@ -119,42 +126,63 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       previousTime = time;
       const width = stage.clientWidth || window.innerWidth;
       const height = stage.clientHeight || window.innerHeight;
-      const mobile = width < 680;
-      const step = Math.min(width * (mobile ? 0.34 : 0.21), mobile ? 150 : 380);
-      if (!reducedMotion && !dragRef.current && !cardHoveredRef.current) phaseRef.current += delta * 0.00028;
+      const mobile = width < 720;
+
+      if (!reducedMotion && !dragRef.current && !cardHoveredRef.current) {
+        phaseRef.current += delta * 0.00024;
+      }
       phaseRef.current += wheelRef.current;
       wheelRef.current *= 0.86;
       if (Math.abs(wheelRef.current) < 0.0001) wheelRef.current = 0;
 
       const count = pages.length;
-      phaseRef.current = ((phaseRef.current % count) + count) % count;
-      const activeIndex = ((Math.round(phaseRef.current) % count) + count) % count;
-      const counter = stage.querySelector<HTMLElement>('.pr-counter');
-      if (counter) counter.textContent = String(activeIndex + 1).padStart(2, '0') + ' / ' + String(count).padStart(2, '0');
+      const rx = mobile ? Math.min(width * 0.36, 170) : Math.min(width * 0.34, 490);
+      const ry = mobile ? Math.min(height * 0.13, 86) : Math.min(height * 0.16, 130);
+      const rz = mobile ? 140 : 320;
+      const cx = width / 2;
+      const cy = height * (mobile ? 0.58 : 0.56);
+
+      // Determine frontmost card for counter
+      let bestFrontIdx = 0;
+      let bestCos = -2;
 
       cardRefs.current.forEach((card, index) => {
         if (!card) return;
-        const relative = ((((index - phaseRef.current + count / 2) % count) + count) % count) - count / 2;
-        const distance = Math.abs(relative);
-        const x = width / 2 + relative * step;
-        const float = reducedMotion ? 0 : Math.sin(time * 0.0015 + index * 1.37) * (mobile ? 4 : 9);
-        const y = height * (mobile ? 0.59 : 0.57) + Math.sin(relative * 0.72) * Math.min(mobile ? 24 : 62, height * (mobile ? 0.045 : 0.08)) + float;
-        const z = -Math.min(distance, 4) * (mobile ? 35 : 82);
-        const rotateY = relative * (mobile ? -9 : -14);
-        const rotateZ = relative * -1.7 + (reducedMotion ? 0 : Math.sin(time * 0.001 + index) * 0.4);
-        const scale = 1 - Math.min(distance, 4) * (mobile ? 0.07 : 0.085);
-        const opacity = Math.max(0.3, 1 - Math.max(0, distance - 2.2) * 0.26);
-        card.style.transform = 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px) translate(-50%,-50%) rotateY(' + rotateY + 'deg) rotateZ(' + rotateZ + 'deg) scale(' + scale + ')';
-        card.style.zIndex = String(100 - Math.round(distance * 10));
-        card.style.opacity = String(opacity);
-        if (distance < 1.6) {
-          const livePreview = card.querySelector<HTMLIFrameElement>('[data-live-src]');
-          if (livePreview && livePreview.dataset.loaded !== 'true') {
-            livePreview.src = livePreview.dataset.liveSrc || 'about:blank';
-            livePreview.dataset.loaded = 'true';
-          }
+        const theta = ((index / count) * Math.PI * 2) - phaseRef.current * (Math.PI * 2 / count);
+        const sinA = Math.sin(theta);
+        const cosA = Math.cos(theta);
+
+        if (cosA > bestCos) {
+          bestCos = cosA;
+          bestFrontIdx = index;
         }
+
+        // Depth normalization: 1 = frontmost, 0 = backmost
+        const depth = (cosA + 1) * 0.5;
+        const floatY = reducedMotion ? 0 : Math.sin(time * 0.0018 + index * 1.1) * (mobile ? 3 : 7);
+
+        const x = cx + sinA * rx;
+        const y = cy + cosA * ry * 0.52 + floatY;
+        const z = cosA * rz - rz * 0.35;
+        const scale = (mobile ? 0.56 : 0.6) + (mobile ? 0.38 : 0.42) * depth;
+        const rotateY = sinA * (mobile ? -20 : -28);
+        const rotateZ = sinA * -2.2;
+        const opacity = 0.34 + 0.66 * Math.pow(depth, 0.8);
+        const blur = cosA < -0.25 ? Math.min(2.4, (-cosA - 0.25) * 3.2) : 0;
+
+        card.style.transform =
+          `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) ` +
+          `translate(-50%, -50%) rotateY(${rotateY.toFixed(2)}deg) rotateZ(${rotateZ.toFixed(2)}deg) scale(${scale.toFixed(3)})`;
+        card.style.zIndex = String(Math.round(depth * 100) + 10);
+        card.style.opacity = opacity.toFixed(3);
+        card.style.filter = blur > 0.1 ? `blur(${blur.toFixed(1)}px)` : 'none';
       });
+
+      const counter = stage.querySelector<HTMLElement>('.pr-counter');
+      if (counter) {
+        counter.textContent =
+          String(bestFrontIdx + 1).padStart(2, '0') + ' / ' + String(count).padStart(2, '0');
+      }
 
       frame = requestAnimationFrame(animate);
     };
@@ -170,18 +198,28 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       frame = 0;
       previousTime = 0;
     };
-    const observer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      if (visible) start();
-      else stop();
-    }, { threshold: 0.03 });
-    const onVisibilityChange = () => document.hidden ? stop() : start();
-    const releaseOutsideStage = (event: PointerEvent) => {
-      if (event.target instanceof Node && stage.contains(event.target)) return;
+
+    const observer =
+      typeof IntersectionObserver === 'undefined'
+        ? null
+        : new IntersectionObserver(
+            ([entry]) => {
+              visible = entry.isIntersecting;
+              if (visible) start();
+              else stop();
+            },
+            { threshold: 0.03 }
+          );
+    const onVisibilityChange = () => (document.hidden ? stop() : start());
+    const releaseOutsideStage = () => {
       dragRef.current = null;
+      cardHoveredRef.current = false;
       stage.classList.remove('is-dragging');
-      window.setTimeout(() => { draggedRef.current = false; }, 100);
+      window.setTimeout(() => {
+        draggedRef.current = false;
+      }, 60);
     };
+
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('pointerup', releaseOutsideStage);
     window.addEventListener('pointercancel', releaseOutsideStage);
@@ -199,143 +237,188 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName, 
       window.removeEventListener('pointercancel', releaseOutsideStage);
       motionQuery.removeEventListener?.('change', updateMotionPreference);
     };
-  }, [pages.length]);
+  }, [pages.length, viewMode]);
 
   const handleWheel = (event: React.WheelEvent<HTMLElement>) => {
-    wheelRef.current += clamp((event.deltaY || event.deltaX) / 380 * 0.34, -0.8, 0.8);
+    if (viewMode !== 'circle') return;
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey) {
+      wheelRef.current += clamp(((event.deltaX || event.deltaY) / 380) * 0.36, -0.8, 0.8);
+    }
   };
+
   const handlePointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if (viewMode !== 'circle') return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    dragRef.current = { x: event.clientX, phase: phaseRef.current };
+    dragRef.current = { x: event.clientX, y: event.clientY, phase: phaseRef.current };
     draggedRef.current = false;
-    cardHoveredRef.current = true;
     stageRef.current?.classList.add('is-dragging');
   };
+
   const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
-    if (!dragRef.current) return;
-    const distance = event.clientX - dragRef.current.x;
-    if (Math.abs(distance) > 32) draggedRef.current = true;
+    if (viewMode !== 'circle' || !dragRef.current) return;
+    const distanceX = event.clientX - dragRef.current.x;
+    const distanceY = event.clientY - dragRef.current.y;
+    if (Math.abs(distanceX) > 14 && Math.abs(distanceX) > Math.abs(distanceY)) {
+      draggedRef.current = true;
+    }
     const width = stageRef.current?.clientWidth || window.innerWidth;
     const step = Math.min(width * (width < 680 ? 0.34 : 0.21), width < 680 ? 150 : 380);
-    phaseRef.current = dragRef.current.phase - distance / step;
+    phaseRef.current = dragRef.current.phase - distanceX / step;
   };
+
   const handlePointerUp = () => {
     dragRef.current = null;
     stageRef.current?.classList.remove('is-dragging');
-    window.setTimeout(() => { draggedRef.current = false; }, 100);
+    window.setTimeout(() => {
+      draggedRef.current = false;
+    }, 80);
   };
 
-  const renderShot = (page: PageItem) => {
-    if (page.id === 'men-studio' || page.id === 'circle-lookbook') {
-      return (
-        <iframe
-          className="pr-live-preview"
-          data-live-src={'/?ribbonPreview=' + page.id}
-          title={page.title + ' live preview'}
-          loading="lazy"
-          aria-hidden="true"
-          tabIndex={-1}
-        />
-      );
+  const handleCardClick = (event: React.MouseEvent<HTMLAnchorElement>, page: PageItem) => {
+    if (draggedRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      draggedRef.current = false;
+      return;
     }
-    const modelImage = (look: RibbonModel, className: string, style?: React.CSSProperties) => look.crop
-              ? <svg key={look.id} className={className + ' pr-shot-model-svg'} viewBox={look.crop.join(' ')} preserveAspectRatio="xMidYMax meet" style={style} aria-label={look.name}><image href={look.image} width="960" height="540" /></svg>
-              : <img key={look.id} className={className} src={look.image} srcSet={look.srcSet} sizes="(min-width: 750px) 320px, 45vw" width="1100" height="1956" alt={look.name} loading="eager" decoding="async" style={style} onError={(event) => { const image = event.currentTarget; if (look.fallbackImage && image.src !== look.fallbackImage) image.src = look.fallbackImage; }} />;
-    const modelList = page.models || [];
-    const productList = page.products || [];
-    const modelImages = modelList.slice(0, page.mode === 'circle' ? 12 : 5);
-    const productImages = productList.slice(0, page.mode === 'products' ? 9 : 3);
 
-    return (
-      <div className={'pr-page-shot pr-shot-' + page.mode}>
-        <div className="pr-shot-sitebar">
-          <strong>{shopName}</strong>
-          <span>COLLECTION　 STUDIO　 SHOP</span>
-          <b aria-hidden="true">BAG (0)</b>
-        </div>
-        <div className="pr-shot-eyebrow">{page.kicker.replace(/^\d+\s\/\s/, '')}</div>
-        {page.mode === 'products' ? (
-          <div className="pr-shot-product-grid">
-            {productImages.map((product) => <div className="pr-shot-product" key={product.id}><img src={product.image} alt="" loading="lazy" /><span>{product.name}</span></div>)}
-          </div>
-        ) : page.mode === 'rail' ? (
-          <div className="pr-shot-rail">
-            {productImages.map((product) => <div className="pr-shot-hanger" key={product.id}><i aria-hidden="true" /><img src={product.image} alt="" loading="lazy" /><span>{product.name}</span></div>)}
-          </div>
-        ) : page.mode === 'circle' ? (
-          <div className="pr-shot-circle">
-            <i className="pr-shot-orbit" aria-hidden="true" />
-            {modelImages.map((look, index) => { const angle = (index / Math.max(1, modelImages.length)) * Math.PI * 2 - Math.PI / 2; return modelImage(look, '', { position: 'absolute', display: 'block', zIndex: 2, left: (50 + Math.cos(angle) * 38) + '%', top: (50 + Math.sin(angle) * 37) + '%', width: '19%', height: '39%', objectFit: 'contain', objectPosition: 'center bottom', transform: 'translate(-50%,-50%)' }); })}
-            <span>STAY OUT OF THE LOOP</span>
-          </div>
-        ) : (
-          <div className="pr-shot-runway">
-            <div className="pr-shot-models">
-              {modelImages.map((look, index) => modelImage(look, index === 0 ? 'is-lead' : '', { position: 'absolute', display: 'block', bottom: 0, left: index === 0 ? '35%' : [ '5%', '25%', '39%', '60%', '76%' ][index] || '5%', zIndex: index === 0 ? 3 : 1, width: index === 0 ? '31%' : '23%', height: index === 0 ? '98%' : [ '76%', '68%', '94%', '72%', '84%' ][index] || '76%', objectFit: 'contain', objectPosition: 'center bottom' }))}
-              {!modelImages.length && <div className="pr-shot-empty">Add models in Admin</div>}
-            </div>
-            {page.mode !== 'western' && productImages.length > 0 && (
-              <aside className="pr-shot-shop">{productImages.slice(0, 2).map((product) => <div key={product.id}><img src={product.image} alt="" loading="lazy" /><span>{product.name}</span></div>)}</aside>
-            )}
-            {page.mode === 'western' && <div className="pr-shot-western-tag">WESTERN MODEL · SHOP THE LOOK</div>}
-          </div>
-        )}
-        <div className="pr-shot-footer"><i /> TRY THE LOOK <span>SCROLL TO EXPLORE</span></div>
-      </div>
-    );
+    // Open the matching section on the first click, whether the cards are orbiting or flat.
+    event.preventDefault();
+    event.stopPropagation();
+    navigateToSection(page.id);
   };
 
   return (
-    <section className="page-ribbon" id="page-ribbon" aria-label={shopName + ' page previews'}>
-      <div className="pr-stage" ref={stageRef} onWheel={handleWheel} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+    <section
+      className={`page-ribbon ${viewMode === 'flat' ? 'is-flat' : 'is-circle'}`}
+      id="page-ribbon"
+      aria-label={shopName + ' page previews'}
+    >
+      <div
+        className={`pr-stage ${viewMode === 'flat' ? 'is-flat' : 'is-circle'}`}
+        ref={stageRef}
+        onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
         <div className="pr-noise" aria-hidden="true" />
         <header className="pr-topline">
-          <span><i /> {shopName.toUpperCase()} · PAGE INDEX</span>
-          <span>DRAG OR SCROLL TO EXPLORE</span>
+          <span>
+            <i /> {shopName.toUpperCase()} · PAGE INDEX
+          </span>
+          <span className="pr-topline-right">
+            {viewMode === 'circle'
+              ? 'ROUNDING CIRCLE · CLICK ANY PAGE TO OPEN IT'
+              : 'FLAT GALLERY VIEW · CLICK ANY CARD TO JUMP TO PAGE'}
+          </span>
         </header>
-        <div className="pr-headline" aria-hidden="true"><span>THE STYLE</span><span>UNIVERSE</span></div>
-        <p className="pr-intro">Every page. Every look. One collection.</p>
-        <div className="pr-orbit pr-orbit-one" aria-hidden="true" />
-        <div className="pr-orbit pr-orbit-two" aria-hidden="true" />
-        <div className="pr-cards">
-          {pages.map((page) => (
-            <a
-              key={page.id}
-              ref={(node) => { cardRefs.current[PAGES.findIndex((entry) => entry.id === page.id)] = node; }}
-              className="pr-card"
-              href={'#' + page.id}
-              onPointerDown={(event) => {
-                handlePointerDown(event);
-                event.stopPropagation();
+
+        <div className="pr-headline" aria-hidden="true">
+          <span>THE STYLE</span>
+          <span>UNIVERSE</span>
+        </div>
+        <p className="pr-intro">
+          {viewMode === 'circle'
+            ? 'Every page orbiting in 3D · Click a page to open it'
+            : 'Click any page below to open that section'}
+        </p>
+
+        {viewMode === 'circle' && (
+          <>
+            <div className="pr-orbit pr-orbit-one" aria-hidden="true" />
+            <div className="pr-orbit pr-orbit-two" aria-hidden="true" />
+          </>
+        )}
+
+        {viewMode === 'flat' && (
+          <div className="pr-flat-toolbar">
+            <button
+              type="button"
+              className="pr-mode-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedPageId(null);
+                setViewMode('circle');
               }}
-              onPointerEnter={() => { cardHoveredRef.current = true; }}
-              onPointerLeave={() => { cardHoveredRef.current = false; }}
-              onClick={(event) => {
-                if (draggedRef.current) {
-                  event.preventDefault();
-                  return;
-                }
-                event.preventDefault();
-                window.location.assign('/#' + page.id);
-              }}
-              aria-label={'Open ' + page.title}
-              draggable={false}
             >
-              <div className="pr-browser-bar">
-                <span className="pr-window-dots"><i /><i /><i /></span>
-                <span className="pr-address">{page.title}</span>
-                <span className="pr-browser-icons" aria-hidden="true">⌕　◻</span>
-              </div>
-              <div className="pr-frame">{renderShot(page)}</div>
-              <div className="pr-card-copy"><span>{page.kicker}</span><strong>{page.title}</strong><b aria-hidden="true">↗</b></div>
-            </a>
-          ))}
+              ↺ Back to 3D Circle
+            </button>
+          </div>
+        )}
+
+        <div className={`pr-cards ${viewMode === 'flat' ? 'is-flat' : 'is-circle'}`}>
+          {pages.map((page, idx) => {
+            const isSelected = viewMode === 'flat' && selectedPageId === page.id;
+            return (
+              <a
+                key={page.id}
+                ref={(node) => {
+                  cardRefs.current[idx] = node;
+                }}
+                className={`pr-card ${isSelected ? 'is-focused' : ''}`}
+                href={'#' + page.id}
+                onPointerEnter={() => {
+                  if (viewMode === 'circle') cardHoveredRef.current = true;
+                }}
+                onPointerLeave={() => {
+                  cardHoveredRef.current = false;
+                }}
+                onClick={(event) => handleCardClick(event, page)}
+                aria-label={
+                  viewMode === 'circle'
+                    ? `Flatten view around ${page.title}`
+                    : `Open ${page.title}`
+                }
+                draggable={false}
+              >
+                <div className="pr-browser-bar">
+                  <span className="pr-window-dots">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span className="pr-address">{page.routeLabel}</span>
+                  <span className="pr-browser-icons" aria-hidden="true">
+                    {viewMode === 'circle' ? '3D' : 'OPEN'}
+                  </span>
+                </div>
+                <div className="pr-frame">
+                  <iframe
+                    className="pr-live-preview"
+                    data-live-src={'/?ribbonPreview=' + page.id}
+                    title={page.title + ' live preview'}
+                    loading="eager"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  />
+                </div>
+                <div className="pr-card-copy">
+                  <span>{page.kicker}</span>
+                  <strong>{page.title}</strong>
+                  <b aria-hidden="true">{viewMode === 'flat' ? '↗' : '◎'}</b>
+                </div>
+              </a>
+            );
+          })}
         </div>
+
         <div className="pr-caption">
-          <span>CONTINUOUS PAGE TOUR</span>
-          <span className="pr-counter">01 / 07</span>
+          <span>
+            {viewMode === 'circle'
+              ? 'DRAG TO SPIN CIRCLE · CLICK ANY PAGE TO OPEN IT'
+              : `ALL ${pages.length} LIVE PAGES · CLICK A CARD TO NAVIGATE`}
+          </span>
+          <span className="pr-counter">
+            {viewMode === 'flat'
+              ? `${String(pages.length).padStart(2, '0')} / ${String(pages.length).padStart(2, '0')} FLAT`
+              : `01 / ${String(pages.length).padStart(2, '0')}`}
+          </span>
         </div>
-        <div className="pr-progress"><span /></div>
+        <div className="pr-progress">
+          <span />
+        </div>
       </div>
     </section>
   );

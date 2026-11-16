@@ -1,83 +1,183 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isStoreAdmin() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin'
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Deny access unless a rule below explicitly allows it.
+    function isStoreAdmin() {
+      return isSignedIn() && (
+        (
+          request.auth.token.email_verified == true
+          && request.auth.token.email == 'alnisrpurchase@gmail.com'
+        )
+        || (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin'
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true
+        )
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'price', 'image'])
+        && data.keys().hasOnly([
+          'id', 'name', 'vendor', 'price', 'image', 'imageWidth', 'imageHeight',
+          'mobileImageWidth', 'mobileImageHeight', 'optionLegend', 'sizes',
+          'variants', 'url', 'tag', 'category', 'virtualStudioLook',
+          'fitDescription', 'defaultPinX', 'defaultPinY', 'updatedAt'
+        ])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.price is number && data.price >= 0 && data.price <= 1000000
+        && data.image is string && data.image.size() <= 900000
+        && (!('vendor' in data) || (data.vendor is string && data.vendor.size() <= 120))
+        && (!('optionLegend' in data) || (data.optionLegend is string && data.optionLegend.size() <= 60))
+        && (!('sizes' in data) || (data.sizes is list && data.sizes.size() <= 30))
+        && (!('variants' in data) || (data.variants is list && data.variants.size() <= 30))
+        && (!('url' in data) || (data.url is string && data.url.size() <= 500))
+        && (!('tag' in data) || (data.tag is string && data.tag.size() <= 60))
+        && (!('category' in data) || (data.category is string && data.category.size() <= 40))
+        && (!('virtualStudioLook' in data) || (data.virtualStudioLook is string && data.virtualStudioLook.size() <= 120))
+        && (!('fitDescription' in data) || (data.fitDescription is string && data.fitDescription.size() <= 500));
+    }
+
+    function isValidLook(data) {
+      return data.keys().hasAll(['id', 'name', 'src640', 'productIds'])
+        && data.keys().hasOnly([
+          'id', 'key', 'name', 'description', 'src640', 'srcset1080',
+          'productIds', 'pins', 'isCustom', 'modelGroup', 'updatedAt'
+        ])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.src640 is string && data.src640.size() <= 900000
+        && data.productIds is list && data.productIds.size() <= 30
+        && (!('key' in data) || (data.key is string && data.key.size() <= 60))
+        && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+        && (!('srcset1080' in data) || (data.srcset1080 is string && data.srcset1080.size() <= 900000))
+        && (!('pins' in data) || (data.pins is list && data.pins.size() <= 30))
+        && (!('modelGroup' in data) || data.modelGroup in ['men', 'ladies', 'western']);
+    }
+
+    function isValidMaisonEditItem(data) {
+      return data.keys().hasAll(['id', 'category', 'store', 'name', 'price'])
+        && data.keys().hasOnly([
+          'id', 'slotKey', 'category', 'store', 'name', 'price',
+          'sheetCol', 'sheetRow', 'customImage', 'tags', 'sizes',
+          'savedDefault', 'fitDescription', 'updatedAt'
+        ])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.category in ['tops', 'skirts', 'shoes', 'bags']
+        && data.store in ['norra', 'lune', 'meridian', 'ode']
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.price is number && data.price >= 0 && data.price <= 1000000
+        && (!('slotKey' in data) || (data.slotKey is string && data.slotKey.size() <= 20))
+        && (!('customImage' in data) || (data.customImage is string && data.customImage.size() <= 900000))
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 15))
+        && (!('sizes' in data) || (data.sizes is list && data.sizes.size() <= 20))
+        && (!('fitDescription' in data) || (data.fitDescription is string && data.fitDescription.size() <= 500));
+    }
+
+    // Default deny for everything not explicitly granted below.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Public storefront data; only a provisioned admin may change it.
-    match /products/{id} {
-      allow read: if true;
-      allow write: if isStoreAdmin();
-    }
-    match /looks/{id} {
-      allow read: if true;
-      allow write: if isStoreAdmin();
-    }
-    match /settings/{id} {
-      allow read: if true;
-      // Other shared sections require the provisioned store-admin record.
-      // Reel changes are limited to signed-in Firebase accounts because the storefront
-      // has no public Firebase sign-up flow; shoppers remain unauthenticated.
-      allow write: if isStoreAdmin() || (
-        id == 'shared_reels'
-        && request.auth != null
-        && request.auth.token.firebase.sign_in_provider == 'password'
-        && request.resource.data.keys().hasAll(['items'])
-        && request.resource.data.keys().hasOnly(['items', 'updatedAt'])
-        && request.resource.data.items is list
-        && request.resource.data.items.size() <= 50
-      );
+    // Startup connection check endpoints.
+    match /test/{id} {
+      allow get: if isValidId(id);
+      allow list, write: if false;
     }
     match /system/{id} {
-      allow read: if true;
+      allow get: if isValidId(id);
+      allow list, write: if false;
     }
 
-    // Admin role records are provisioned manually in Firebase Console.
+    // Admin role records: readable only by the matching authenticated user.
     match /admins/{uid} {
-      allow read, write: if false;
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list, write: if false;
     }
 
-    // Order pages use an unguessable 12-character token. Only direct reads are
-    // public; listing, updates, and deletes are denied. These records contain
-    // product/order details only, never customer contact or delivery notes.
+    // Public storefront catalog; only store admins can create, update, or delete.
+    match /products/{productId} {
+      allow get: if isValidId(productId);
+      allow list: if true;
+      allow create, update: if isStoreAdmin() && isValidId(productId) && isValidProduct(incoming()) && incoming().id == productId;
+      allow delete: if isStoreAdmin() && isValidId(productId);
+    }
+
+    match /looks/{lookId} {
+      allow get: if isValidId(lookId);
+      allow list: if true;
+      allow create, update: if isStoreAdmin() && isValidId(lookId) && isValidLook(incoming()) && incoming().id == lookId;
+      allow delete: if isStoreAdmin() && isValidId(lookId);
+    }
+
+    match /maison_edit_items/{itemId} {
+      allow get: if isValidId(itemId);
+      allow list: if true;
+      allow create, update: if isStoreAdmin() && isValidId(itemId) && isValidMaisonEditItem(incoming()) && incoming().id == itemId;
+      allow delete: if isStoreAdmin() && isValidId(itemId);
+    }
+
+    match /settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if true;
+      allow create, update: if isValidId(settingId) && (
+        isStoreAdmin() || (
+          settingId == 'shared_reels'
+          && isSignedIn()
+          && incoming().keys().hasAll(['items'])
+          && incoming().keys().hasOnly(['items', 'updatedAt'])
+          && incoming().items is list
+          && incoming().items.size() <= 50
+        )
+      );
+      allow delete: if isStoreAdmin() && isValidId(settingId);
+    }
+
+    // Shareable order slips use an unguessable 12-character token.
     match /orderShares/{token} {
-      allow get: if true;
+      allow get: if token is string && token.matches('^[A-Za-z0-9_-]{12}$');
       allow list, update, delete: if false;
-      allow create: if token.matches('^[A-Za-z0-9_-]{12}$')
-        && request.resource.data.keys().hasOnly([
-          'orderId', 'date', 'shopName', 'items', 'total', 'currencySymbol'
-        ])
-        && request.resource.data.orderId is string
-        && request.resource.data.orderId.size() <= 40
-        && request.resource.data.date is string
-        && request.resource.data.shopName is string
-        && request.resource.data.items is list
-        && request.resource.data.items.size() > 0
-        && request.resource.data.items.size() <= 50
-        && request.resource.data.total is number
-        && request.resource.data.total >= 0
-        && request.resource.data.currencySymbol is string;
+      allow create: if token is string
+        && token.matches('^[A-Za-z0-9_-]{12}$')
+        && incoming().keys().hasAll(['orderId', 'date', 'shopName', 'items', 'total', 'currencySymbol'])
+        && incoming().keys().hasOnly(['orderId', 'date', 'shopName', 'items', 'total', 'currencySymbol'])
+        && incoming().orderId is string && incoming().orderId.size() > 0 && incoming().orderId.size() <= 40
+        && incoming().date is string && incoming().date.size() <= 60
+        && incoming().shopName is string && incoming().shopName.size() <= 120
+        && incoming().items is list && incoming().items.size() > 0 && incoming().items.size() <= 50
+        && incoming().total is number && incoming().total >= 0 && incoming().total <= 10000000
+        && incoming().currencySymbol is string && incoming().currencySymbol.size() <= 12;
     }
 
-    // Shoppers may create well-formed private orders. Only admins can read/manage them.
+    // Shoppers create orders; only store admins can inspect or manage them.
     match /orders/{orderId} {
-      allow create: if request.resource.data.orderId is string
-        && request.resource.data.orderId.size() < 40
-        && request.resource.data.items is list
-        && request.resource.data.items.size() > 0
-        && request.resource.data.items.size() <= 50
-        && request.resource.data.total is number
-        && request.resource.data.total >= 0;
-      allow read, update, delete: if isStoreAdmin();
+      allow create: if isValidId(orderId)
+        && incoming().keys().hasAll(['orderId', 'items', 'total'])
+        && incoming().keys().hasOnly([
+          'orderId', 'items', 'total', 'channel', 'phone',
+          'customerName', 'notes', 'orderUrl', 'createdAt', 'status'
+        ])
+        && incoming().orderId is string && incoming().orderId == orderId && incoming().orderId.size() <= 40
+        && incoming().items is list && incoming().items.size() > 0 && incoming().items.size() <= 50
+        && incoming().total is number && incoming().total >= 0 && incoming().total <= 10000000
+        && (!('customerName' in incoming()) || (incoming().customerName is string && incoming().customerName.size() <= 120))
+        && (!('notes' in incoming()) || (incoming().notes is string && incoming().notes.size() <= 500))
+        && (!('phone' in incoming()) || (incoming().phone is string && incoming().phone.size() <= 30))
+        && (!('orderUrl' in incoming()) || (incoming().orderUrl is string && incoming().orderUrl.size() <= 2000));
+      allow get: if isStoreAdmin() && isValidId(orderId);
+      allow list, update, delete: if isStoreAdmin();
     }
   }
 }

@@ -8,18 +8,20 @@ import { OffcutRailSection } from './components/OffcutRailSection';
 import { LadiesDepthLookbook } from './components/LadiesDepthLookbook';
 import { LadiesRailSection } from './components/LadiesRailSection';
 import { VirtualStudio } from './components/VirtualStudio';
+import { WesternOrbitSection } from './components/WesternOrbitSection';
 import { CircleLookbook } from './components/CircleLookbook';
 import { ProductSpotlightCarousel } from './components/ProductSpotlightCarousel';
 import { PageRibbonSection } from './components/PageRibbonSection';
 import { DEFAULT_LOOKS } from './data/defaultCatalog';
-import { Look, Product } from './types';
+import { Look, MaisonEditProduct, Product } from './types';
 import { getStoredLooks, getStoredProducts, saveLooks, saveProducts } from './services/catalogStorage';
 import { getBagCount } from './services/bagStorage';
 import { getStoredSettings, saveStoredSettings, StoreSettings, cleanCurrencySymbol } from './services/storeSettings';
-import { fetchCatalogFromFirestore, fetchOrderShareFromFirestore, fetchSharedSectionFromFirestore, fetchStoreSettingsFromFirestore } from './services/firebase';
+import { fetchCatalogFromFirestore, fetchMaisonEditFromFirestore, fetchOrderShareFromFirestore, fetchSharedSectionFromFirestore, fetchStoreSettingsFromFirestore } from './services/firebase';
 import { getStoredRailItems, saveRailItems } from './services/railStorage';
 import { getStoredLadiesPieces, getStoredLadiesSettings, saveLadiesPieces, saveLadiesSettings } from './services/ladiesStorage';
 import { getStoredLadiesRailItems, saveLadiesRailItems } from './services/ladiesRailStorage';
+import { getMaisonEditCrop, getStoredMaisonEditItems, ME_PRODUCT_SHEET_URL, saveMaisonEditItems } from './services/maisonEditStorage';
 
 
 export default function App() {
@@ -88,33 +90,47 @@ export default function App() {
       'ladies-section',
       'ladies-rail-section',
       'virtual-studio',
+      'western-orbit-studio',
       'circle-lookbook',
       'product-collection',
     ]);
-    const sectionId = window.location.hash.slice(1);
-    if (!sectionIds.has(sectionId)) return;
 
     let timeoutId = 0;
-    let attempts = 0;
     let animationFrame = 0;
-    const findAndScroll = () => {
-      const target = document.getElementById(sectionId);
-      if (target) {
-        const headerHeight = Number.parseFloat(
-          window.getComputedStyle(document.documentElement).getPropertyValue('--header-h'),
-        ) || 64;
-        const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-        return;
-      }
-      attempts += 1;
-      if (attempts < 40) timeoutId = window.setTimeout(findAndScroll, 50);
+
+    const scrollToHashSection = (behavior: ScrollBehavior) => {
+      const sectionId = window.location.hash.slice(1);
+      if (!sectionIds.has(sectionId)) return;
+      let attempts = 0;
+      window.clearTimeout(timeoutId);
+      window.cancelAnimationFrame(animationFrame);
+
+      const findAndScroll = () => {
+        const target = document.getElementById(sectionId);
+        if (target) {
+          const headerHeight =
+            Number.parseFloat(
+              window.getComputedStyle(document.documentElement).getPropertyValue('--header-h'),
+            ) || 64;
+          const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
+          window.scrollTo({ top: Math.max(0, top), behavior });
+          return;
+        }
+        attempts += 1;
+        if (attempts < 40) timeoutId = window.setTimeout(findAndScroll, 50);
+      };
+
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = window.requestAnimationFrame(findAndScroll);
+      });
     };
-    animationFrame = window.requestAnimationFrame(() => {
-      animationFrame = window.requestAnimationFrame(findAndScroll);
-    });
+
+    scrollToHashSection('auto');
+    const onHashChange = () => scrollToHashSection('smooth');
+    window.addEventListener('hashchange', onHashChange);
 
     return () => {
+      window.removeEventListener('hashchange', onHashChange);
       window.cancelAnimationFrame(animationFrame);
       window.clearTimeout(timeoutId);
     };
@@ -167,12 +183,14 @@ export default function App() {
   useEffect(() => {
     let active = true;
     const loadSharedStoreData = async () => {
-      const [cloudSettings, catalog, rail, ladies, ladiesRail] = await Promise.all([
+      const [cloudSettings, catalog, rail, ladies, ladiesRail, maisonEditCollection, sharedMaisonEdit] = await Promise.all([
         fetchStoreSettingsFromFirestore(),
         fetchCatalogFromFirestore(),
         fetchSharedSectionFromFirestore<{ items?: ReturnType<typeof getStoredRailItems> }>('shared_rail'),
         fetchSharedSectionFromFirestore<{ pieces?: ReturnType<typeof getStoredLadiesPieces>; settings?: ReturnType<typeof getStoredLadiesSettings> }>('shared_ladies'),
         fetchSharedSectionFromFirestore<{ items?: ReturnType<typeof getStoredLadiesRailItems> }>('shared_ladies_rail'),
+        fetchMaisonEditFromFirestore(),
+        fetchSharedSectionFromFirestore<{ items?: MaisonEditProduct[] }>('shared_maison_edit'),
       ]);
       if (!active) return;
       if (cloudSettings) {
@@ -192,6 +210,8 @@ export default function App() {
       if (ladies?.pieces) saveLadiesPieces(ladies.pieces, false);
       if (ladies?.settings) saveLadiesSettings(ladies.settings, false);
       if (ladiesRail?.items) saveLadiesRailItems(ladiesRail.items, false);
+      const nextMaisonEdit = maisonEditCollection?.length ? maisonEditCollection : sharedMaisonEdit?.items;
+      if (nextMaisonEdit?.length) saveMaisonEditItems(nextMaisonEdit, false);
     };
     void loadSharedStoreData().catch((error) => console.error('Failed to load shared Firestore data:', error));
     return () => {
@@ -244,6 +264,7 @@ export default function App() {
     const storedRailItems = getStoredRailItems();
     const storedLadiesPieces = getStoredLadiesPieces();
     const storedLadiesRailItems = getStoredLadiesRailItems();
+    const storedMaisonEditItems = getStoredMaisonEditItems();
     const orderWithPhotos = {
       ...sharedOrder,
       items: sharedOrder.items.map((item: any) => {
@@ -253,17 +274,34 @@ export default function App() {
         const railItem = storedRailItems.find((candidate) => candidate.id === item.id || candidate.name === item.name);
         const ladiesPiece = storedLadiesPieces.find((candidate) => candidate.id === item.id || candidate.name === item.name);
         const ladiesRailItem = storedLadiesRailItems.find((candidate) => candidate.id === item.id || candidate.name === item.name);
+        const maisonEditItem = storedMaisonEditItems.find(
+          (candidate) => `me-${candidate.id}` === item.id || candidate.id === item.id || candidate.name === item.name
+        );
+        const maisonEditCrop = maisonEditItem && !maisonEditItem.customImage
+          ? getMaisonEditCrop(maisonEditItem.sheetCol ?? 0, maisonEditItem.sheetRow ?? 0)
+          : undefined;
         return {
           ...item,
-          image: item.image || product?.image || railItem?.image || ladiesPiece?.customImage || ladiesRailItem?.image,
-          crop: item.crop || (ladiesPiece?.box ? {
-            x: ladiesPiece.box[0],
-            y: ladiesPiece.box[2],
-            w: ladiesPiece.box[1] - ladiesPiece.box[0],
-            h: ladiesPiece.box[3] - ladiesPiece.box[2],
-            sheetW: 960,
-            sheetH: 720,
-          } : undefined),
+          image:
+            item.image ||
+            product?.image ||
+            railItem?.image ||
+            ladiesPiece?.customImage ||
+            ladiesRailItem?.image ||
+            maisonEditItem?.customImage ||
+            (maisonEditCrop ? ME_PRODUCT_SHEET_URL : undefined),
+          crop:
+            item.crop ||
+            (ladiesPiece?.box
+              ? {
+                  x: ladiesPiece.box[0],
+                  y: ladiesPiece.box[2],
+                  w: ladiesPiece.box[1] - ladiesPiece.box[0],
+                  h: ladiesPiece.box[3] - ladiesPiece.box[2],
+                  sheetW: 960,
+                  sheetH: 720,
+                }
+              : ladiesRailItem?.crop || maisonEditCrop),
         };
       }),
     };
@@ -273,7 +311,7 @@ export default function App() {
   const ribbonPreview = new URLSearchParams(window.location.search).get('ribbonPreview');
   if (ribbonPreview === 'men-studio') {
     return (
-      <main style={{ width: 1280, height: 820, overflow: 'hidden' }}>
+      <main style={{ width: 1280, height: 920, overflow: 'hidden', background: '#fff', ['--rw-frame-h' as any]: '920px' }}>
         <RunwaySection
           looks={mensRunwayLooks.length ? mensRunwayLooks : DEFAULT_LOOKS}
           products={products}
@@ -285,13 +323,100 @@ export default function App() {
       </main>
     );
   }
+  if (ribbonPreview === 'offcut-rail-section') {
+    return (
+      <main style={{ width: 1280, height: 920, overflow: 'hidden', background: '#fff' }}>
+        <OffcutRailSection
+          shopName={settings.shopName}
+          shopTagline={settings.shopTagline}
+          currencySymbol={currentCurrency}
+          whatsappNumber={settings.whatsappNumber}
+          onOpenBag={() => {}}
+        />
+      </main>
+    );
+  }
+  if (ribbonPreview === 'ladies-section') {
+    return (
+      <main style={{ width: 1280, height: 920, overflow: 'hidden', background: '#fff' }}>
+        <LadiesDepthLookbook
+          shopName={settings.shopName}
+          currencySymbol={currentCurrency}
+          cartCount={cartCount}
+          onOpenBag={() => {}}
+          onNavigateHome={() => {}}
+        />
+      </main>
+    );
+  }
+  if (ribbonPreview === 'ladies-rail-section') {
+    return (
+      <main style={{ width: 1280, height: 920, overflow: 'hidden', background: '#fff' }}>
+        <LadiesRailSection
+          shopName={settings.shopName}
+          currencySymbol={currentCurrency}
+          whatsappNumber={settings.whatsappNumber}
+          onOpenBag={() => {}}
+        />
+      </main>
+    );
+  }
+  if (ribbonPreview === 'virtual-studio') {
+    return (
+      <main style={{ width: 1280, height: 920, overflow: 'hidden', background: '#fff' }}>
+        <VirtualStudio
+          shopName={settings.shopName}
+          currencySymbol={currentCurrency}
+          products={products}
+          looks={looks}
+          whatsappNumber={settings.whatsappNumber}
+          onOpenBag={() => {}}
+        />
+      </main>
+    );
+  }
+  if (ribbonPreview === 'western-orbit-studio') {
+    return (
+      <main style={{ width: 1280, height: 920, overflow: 'hidden', background: '#fff' }}>
+        <WesternOrbitSection
+          shopName={settings.shopName}
+          currencySymbol={currentCurrency}
+          products={products}
+          looks={looks}
+          whatsappNumber={settings.whatsappNumber}
+          onOpenBag={() => {}}
+        />
+      </main>
+    );
+  }
   if (ribbonPreview === 'circle-lookbook') {
     return (
-      <main style={{ width: 1280, height: 820, overflow: 'hidden' }}>
+      <main style={{ width: 1280, height: 920, overflow: 'hidden', background: '#fff', ['--rw-frame-h' as any]: '920px' }}>
         <CircleLookbook
           shopName={settings.shopName}
           currencySymbol={currentCurrency}
           looks={looks.length ? looks : DEFAULT_LOOKS}
+          products={products}
+        />
+      </main>
+    );
+  }
+  if (ribbonPreview === 'product-collection') {
+    return (
+      <main
+        style={{
+          width: 1280,
+          height: 920,
+          overflow: 'hidden',
+          background: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
+        <ProductSpotlightCarousel
+          shopName={settings.shopName}
+          currencySymbol={currentCurrency}
           products={products}
         />
       </main>
@@ -352,6 +477,17 @@ export default function App() {
               currencySymbol={currentCurrency}
               products={products}
               looks={looks}
+              whatsappNumber={settings.whatsappNumber}
+              onOpenBag={() => setIsBagOpen(true)}
+            />
+
+            <WesternOrbitSection
+              shopName={settings.shopName}
+              currencySymbol={currentCurrency}
+              products={products}
+              looks={looks}
+              whatsappNumber={settings.whatsappNumber}
+              onOpenBag={() => setIsBagOpen(true)}
             />
 
             <CircleLookbook

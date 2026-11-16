@@ -1,5 +1,7 @@
 import React from 'react';
 import { LADIES_PIECES_SHEET } from '../services/ladiesStorage';
+import { MV_SHEETS } from '../services/ladiesRailStorage';
+import { ME_PRODUCT_SHEET_URL } from '../services/maisonEditStorage';
 import { BagItemCrop } from '../types';
 
 interface SharedOrderItem {
@@ -45,7 +47,14 @@ export const OrderPage: React.FC<{ order: SharedOrder }> = ({ order }) => {
         <section className="p-6 sm:p-8">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-neutral-500">Items ({order.items.length})</h2>
           <ul className="mt-4 divide-y divide-neutral-200">
-            {order.items.map((item) => (
+            {order.items.map((item) => {
+              const sheetHref = item.image
+                || (item.crop?.sheetW === 1744
+                  ? ME_PRODUCT_SHEET_URL
+                  : item.crop?.sheetW === 1360
+                  ? MV_SHEETS.front
+                  : LADIES_PIECES_SHEET);
+              return (
               <li key={item.id + item.size} className="flex gap-4 py-4">
                 {item.crop ? (
                   <svg
@@ -54,7 +63,7 @@ export const OrderPage: React.FC<{ order: SharedOrder }> = ({ order }) => {
                     aria-label={item.name}
                     className="h-24 w-20 shrink-0 bg-neutral-100"
                   >
-                    <image href={LADIES_PIECES_SHEET} width={item.crop.sheetW} height={item.crop.sheetH} />
+                    <image href={sheetHref} width={item.crop.sheetW} height={item.crop.sheetH} />
                   </svg>
                 ) : item.image ? (
                   <img src={item.image} alt={item.name} className="h-24 w-20 shrink-0 bg-neutral-100 object-contain" />
@@ -68,7 +77,8 @@ export const OrderPage: React.FC<{ order: SharedOrder }> = ({ order }) => {
                 </div>
                 <span className="shrink-0 text-sm font-medium">{money(item.price * item.quantity)}</span>
               </li>
-            ))}
+              );
+            })}
           </ul>
           {order.notes && <p className="mt-5 border-l-2 border-neutral-300 pl-3 text-sm text-neutral-600">Note: {order.notes}</p>}
           <div className="mt-6 flex justify-between border-t border-neutral-200 pt-4 font-semibold">

@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Look, Product, LookPin } from '../types';
+import {
+  Look,
+  Product,
+  LookPin,
+  LadiesPiece,
+  LadiesSectionSettings,
+  MaisonEditCategory,
+  MaisonEditProduct,
+  MaisonEditStoreId,
+} from '../types';
 import { saveLooks, saveProducts, resetToDefaults } from '../services/catalogStorage';
 import {
   StoreSettings,
@@ -11,7 +20,11 @@ import {
   syncCatalogToFirestore,
   saveSharedSectionToFirestore,
   fetchCatalogFromFirestore,
+  fetchMaisonEditFromFirestore,
+  getCurrentFirebaseUser,
+  getFirebaseProjectInfo,
   signInStoreAdmin,
+  signInStoreAdminWithGoogle,
   signOutStoreAdmin,
   subscribeStoreAdminAuth,
   updateStoreAdminCredentials,
@@ -23,7 +36,6 @@ import {
   saveRailItems,
   resetRailItems,
 } from '../services/railStorage';
-import { LadiesPiece, LadiesSectionSettings } from '../types';
 import {
   getStoredLadiesPieces,
   saveLadiesPieces,
@@ -34,10 +46,23 @@ import {
 } from '../services/ladiesStorage';
 import {
   LadiesRailItem,
+  MV_CATALOG,
+  MV_SHEETS,
+  getMvCropBox,
   getStoredLadiesRailItems,
   saveLadiesRailItems,
   resetLadiesRailItems,
 } from '../services/ladiesRailStorage';
+import {
+  ME_PRODUCT_SHEET_URL,
+  ME_SLOT_KEYS,
+  ME_STORES,
+  getMaisonEditCrop,
+  getStoredMaisonEditItems,
+  resetMaisonEditItems,
+  saveMaisonEditItems,
+} from '../services/maisonEditStorage';
+import { ProductThumb } from './ProductThumb';
 
 interface AdminPanelProps {
   looks: Look[];
@@ -61,12 +86,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [firebaseUserEmail, setFirebaseUserEmail] = useState<string>('');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // Active Tab: Fitting Studio | Clothes | Runway Models | 3D Rail Clothes | Ladies Collection | Ladies 3D Tops | Store Settings & Firebase
-  const [activeTab, setActiveTab] = useState<'fit_studio' | 'clothes' | 'models' | 'rail' | 'ladies' | 'ladies_rail' | 'settings'>('fit_studio');
+  // Active Tab
+  const [activeTab, setActiveTab] = useState<
+    'fit_studio' | 'clothes' | 'models' | 'rail' | 'ladies' | 'ladies_rail' | 'maison_edit' | 'settings'
+  >('fit_studio');
 
   // Ladies Lookbook CRUD State
   const [ladiesPieces, setLadiesPieces] = useState<LadiesPiece[]>(() => getStoredLadiesPieces());
@@ -88,11 +116,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [ladiesRailModalOpen, setLadiesRailModalOpen] = useState(false);
   const [editingLadiesRailItem, setEditingLadiesRailItem] = useState<LadiesRailItem | null>(null);
 
-  const [ladiesRailForm, setLadiesRailForm] = useState({
+  const [ladiesRailForm, setLadiesRailForm] = useState<{
+    name: string;
+    price: string;
+    image: string;
+    fitDescription: string;
+    sheetIndex?: number;
+    sizes: string;
+  }>({
     name: '',
-    price: '380.00',
+    price: '690.00',
     image: '',
     fitDescription: '',
+    sheetIndex: undefined,
+    sizes: 'S, M, L, XL',
   });
 
   // 3D Rail Clothes CRUD State
@@ -103,6 +140,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     name: '',
     price: '48.00',
     image: '',
+  });
+
+  // Western & Maison Edit Studio CRUD State
+  const [maisonEditItems, setMaisonEditItems] = useState<MaisonEditProduct[]>(() =>
+    getStoredMaisonEditItems()
+  );
+  const [maisonEditFilterCat, setMaisonEditFilterCat] = useState<'all' | MaisonEditCategory>('all');
+  const [maisonEditModalOpen, setMaisonEditModalOpen] = useState(false);
+  const [editingMaisonEditItem, setEditingMaisonEditItem] = useState<MaisonEditProduct | null>(null);
+  const [maisonEditForm, setMaisonEditForm] = useState<{
+    name: string;
+    store: MaisonEditStoreId;
+    category: MaisonEditCategory;
+    slotKey: string;
+    price: string;
+    sizes: string;
+    tags: string;
+    fitDescription: string;
+    savedDefault: boolean;
+    sheetCol: number;
+    sheetRow: number;
+    customImage: string;
+  }>({
+    name: '',
+    store: 'norra',
+    category: 'tops',
+    slotKey: 't1',
+    price: '39.90',
+    sizes: 'XS, S, M, L',
+    tags: 'minimal, soft',
+    fitDescription: '',
+    savedDefault: false,
+    sheetCol: 0,
+    sheetRow: 0,
+    customImage: '',
   });
 
   // Fitting Studio State
@@ -158,8 +230,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
 
   useEffect(() => {
-    const unsubscribe = subscribeStoreAdminAuth((authenticated) => {
+    const unsubscribe = subscribeStoreAdminAuth((authenticated, user) => {
       setIsAuthenticated(authenticated);
+      setFirebaseUserEmail(user?.email || '');
       setIsCheckingAuth(false);
     });
     return unsubscribe;
@@ -173,14 +246,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setLadiesPieces(getStoredLadiesPieces());
       setLadiesSettings(getStoredLadiesSettings());
       setLadiesRailItems(getStoredLadiesRailItems());
+      setMaisonEditItems(getStoredMaisonEditItems());
     };
     window.addEventListener('runway:rail_updated', refreshSharedSections);
     window.addEventListener('runway:ladies_updated', refreshSharedSections);
     window.addEventListener('runway:ladies_rail_updated', refreshSharedSections);
+    window.addEventListener('runway:maison_edit_updated', refreshSharedSections);
     return () => {
       window.removeEventListener('runway:rail_updated', refreshSharedSections);
       window.removeEventListener('runway:ladies_updated', refreshSharedSections);
       window.removeEventListener('runway:ladies_rail_updated', refreshSharedSections);
+      window.removeEventListener('runway:maison_edit_updated', refreshSharedSections);
     };
   }, []);
 
@@ -204,8 +280,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setLoginPassword('');
   };
 
+  const handleGoogleLogin = async () => {
+    setLoginError('');
+    const result = await signInStoreAdminWithGoogle();
+    if (!result.success) {
+      setLoginError(result.message);
+      return;
+    }
+    setIsAuthenticated(true);
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setFirebaseUserEmail('');
     void signOutStoreAdmin();
   };
 
@@ -237,6 +324,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {loginError}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full py-2.5 px-4 border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-900 font-semibold text-xs flex items-center justify-center gap-2.5 transition-colors mb-4"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z" />
+              <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z" />
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z" />
+            </svg>
+            <span>Sign in with Google</span>
+          </button>
+
+          <div className="relative flex py-2 items-center mb-4">
+            <div className="flex-grow border-t border-neutral-200" />
+            <span className="flex-shrink mx-3 text-[10px] uppercase tracking-wider text-neutral-400">
+              or sign in with email &amp; password
+            </span>
+            <div className="flex-grow border-t border-neutral-200" />
+          </div>
 
           <form onSubmit={handleLogin} className="space-y-4 text-xs">
             <div>
@@ -776,15 +885,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // --------------------------------------------------------------------------
-  // Ladies 3D Rail Tops CRUD Handlers
+  // Ladies 3D Rail Garments CRUD Handlers (Maison Verrel)
   // --------------------------------------------------------------------------
   const openAddLadiesRailModal = () => {
+    const preset = MV_CATALOG[0];
     setEditingLadiesRailItem(null);
     setLadiesRailForm({
-      name: '',
-      price: '380.00',
-      image: 'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?auto=format&fit=crop&w=800&q=80',
-      fitDescription: 'Relaxed airy silhouette on natural hanger.',
+      name: preset.name,
+      price: '690.00',
+      image: MV_SHEETS.front,
+      fitDescription: preset.fitDescription,
+      sheetIndex: preset.k,
+      sizes: 'S, M, L, XL',
     });
     setLadiesRailModalOpen(true);
   };
@@ -796,32 +908,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       price: item.price.toString(),
       image: item.image,
       fitDescription: item.fitDescription || '',
+      sheetIndex: item.sheetIndex,
+      sizes: item.sizes?.length ? item.sizes.join(', ') : 'S, M, L, XL',
     });
     setLadiesRailModalOpen(true);
   };
 
   const handleSaveLadiesRailItem = (e: React.FormEvent) => {
     e.preventDefault();
-    const parsedPrice = parseFloat(ladiesRailForm.price) || 380;
+    const parsedPrice = parseFloat(ladiesRailForm.price) || 690;
+    const parsedSizes = ladiesRailForm.sizes
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const hasSheet = typeof ladiesRailForm.sheetIndex === 'number' && ladiesRailForm.image === MV_SHEETS.front;
+    const crop = hasSheet ? getMvCropBox('front', ladiesRailForm.sheetIndex!) : undefined;
+
     if (editingLadiesRailItem) {
       const updated: LadiesRailItem = {
         ...editingLadiesRailItem,
-        name: ladiesRailForm.name || 'Ladies Top',
+        name: ladiesRailForm.name || 'Maison Verrel Garment',
         price: parsedPrice,
-        image: ladiesRailForm.image || 'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?auto=format&fit=crop&w=800&q=80',
-        fitDescription: ladiesRailForm.fitDescription || 'Tailored contemporary blouse silhouette.',
+        image: ladiesRailForm.image || MV_SHEETS.front,
+        fitDescription: ladiesRailForm.fitDescription || 'Tailored silhouette on Maison Verrel gold rail.',
+        sheetIndex: hasSheet ? ladiesRailForm.sheetIndex : undefined,
+        crop,
+        sizes: parsedSizes.length ? parsedSizes : ['S', 'M', 'L', 'XL'],
       };
       const next = ladiesRailItems.map((r) => (r.id === updated.id ? updated : r));
       setLadiesRailItems(next);
       saveLadiesRailItems(next);
     } else {
-      const newId = `lrail-${Date.now()}`;
+      const newId = `mv-rail-${Date.now()}`;
       const newItem: LadiesRailItem = {
         id: newId,
-        name: ladiesRailForm.name || 'New Ladies Top',
+        name: ladiesRailForm.name || 'New Rail Garment',
         price: parsedPrice,
-        image: ladiesRailForm.image || 'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?auto=format&fit=crop&w=800&q=80',
-        fitDescription: ladiesRailForm.fitDescription || 'Contemporary relaxed drape on hanger.',
+        image: ladiesRailForm.image || MV_SHEETS.front,
+        fitDescription: ladiesRailForm.fitDescription || 'Suspended on wooden hanger on the gold rail.',
+        sheetIndex: hasSheet ? ladiesRailForm.sheetIndex : undefined,
+        crop,
+        sizes: parsedSizes.length ? parsedSizes : ['S', 'M', 'L', 'XL'],
       };
       const next = [...ladiesRailItems, newItem];
       setLadiesRailItems(next);
@@ -832,10 +959,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleDeleteLadiesRailItem = (id: string) => {
     if (ladiesRailItems.length <= 1) {
-      alert('You must have at least one top on the ladies rail.');
+      alert('You must have at least one garment on the rail.');
       return;
     }
-    if (!confirm('Are you sure you want to remove this top from the ladies 3D rail?')) return;
+    if (!confirm('Are you sure you want to remove this garment from the Maison Verrel rail?')) return;
     const next = ladiesRailItems.filter((r) => r.id !== id);
     setLadiesRailItems(next);
     saveLadiesRailItems(next);
@@ -853,9 +980,134 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleResetLadiesRail = () => {
-    if (confirm('Reset Ladies 3D rail to default 10 hanging tops?')) {
+    if (confirm('Reset the Maison Verrel rail to all 20 default hanging garments?')) {
       const res = resetLadiesRailItems();
       setLadiesRailItems(res);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Western & Maison Edit Studio CRUD Handlers
+  // --------------------------------------------------------------------------
+  const openAddMaisonEditModal = () => {
+    setEditingMaisonEditItem(null);
+    setMaisonEditForm({
+      name: '',
+      store: 'norra',
+      category: 'tops',
+      slotKey: 't1',
+      price: '39.90',
+      sizes: 'XS, S, M, L',
+      tags: 'minimal, soft',
+      fitDescription: 'Western wear studio piece.',
+      savedDefault: false,
+      sheetCol: 0,
+      sheetRow: 0,
+      customImage: '',
+    });
+    setMaisonEditModalOpen(true);
+  };
+
+  const openEditMaisonEditModal = (item: MaisonEditProduct) => {
+    setEditingMaisonEditItem(item);
+    setMaisonEditForm({
+      name: item.name,
+      store: item.store,
+      category: item.category,
+      slotKey: item.slotKey || 't1',
+      price: item.price.toString(),
+      sizes: item.sizes?.length ? item.sizes.join(', ') : item.category === 'shoes' ? '36, 37, 38, 39, 40' : 'XS, S, M, L',
+      tags: item.tags?.join(', ') || 'minimal',
+      fitDescription: item.fitDescription || '',
+      savedDefault: Boolean(item.savedDefault),
+      sheetCol: item.sheetCol ?? 0,
+      sheetRow: item.sheetRow ?? 0,
+      customImage: item.customImage || '',
+    });
+    setMaisonEditModalOpen(true);
+  };
+
+  const handleSaveMaisonEditItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedPrice = parseFloat(maisonEditForm.price) || 39.9;
+    const parsedSizes = maisonEditForm.sizes
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const parsedTags = maisonEditForm.tags
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (editingMaisonEditItem) {
+      const updated: MaisonEditProduct = {
+        ...editingMaisonEditItem,
+        name: maisonEditForm.name.trim() || 'Studio Garment',
+        store: maisonEditForm.store,
+        category: maisonEditForm.category,
+        slotKey: maisonEditForm.slotKey,
+        price: parsedPrice,
+        sizes: parsedSizes.length ? parsedSizes : ['S', 'M', 'L'],
+        tags: parsedTags.length ? parsedTags : ['minimal'],
+        fitDescription: maisonEditForm.fitDescription.trim() || undefined,
+        savedDefault: maisonEditForm.savedDefault,
+        sheetCol: Number(maisonEditForm.sheetCol),
+        sheetRow: Number(maisonEditForm.sheetRow),
+        customImage: maisonEditForm.customImage.trim() || undefined,
+      };
+      const next = maisonEditItems.map((i) => (i.id === updated.id ? updated : i));
+      setMaisonEditItems(next);
+      saveMaisonEditItems(next);
+    } else {
+      const prefix =
+        maisonEditForm.category === 'tops'
+          ? 't'
+          : maisonEditForm.category === 'skirts'
+          ? 'k'
+          : maisonEditForm.category === 'shoes'
+          ? 's'
+          : 'g';
+      const newItem: MaisonEditProduct = {
+        id: `${prefix}-${Date.now()}`,
+        name: maisonEditForm.name.trim() || 'New Studio Garment',
+        store: maisonEditForm.store,
+        category: maisonEditForm.category,
+        slotKey: maisonEditForm.slotKey,
+        price: parsedPrice,
+        sizes: parsedSizes.length ? parsedSizes : ['S', 'M', 'L'],
+        tags: parsedTags.length ? parsedTags : ['minimal'],
+        fitDescription: maisonEditForm.fitDescription.trim() || undefined,
+        savedDefault: maisonEditForm.savedDefault,
+        sheetCol: Number(maisonEditForm.sheetCol),
+        sheetRow: Number(maisonEditForm.sheetRow),
+        customImage: maisonEditForm.customImage.trim() || undefined,
+      };
+      const next = [...maisonEditItems, newItem];
+      setMaisonEditItems(next);
+      saveMaisonEditItems(next);
+    }
+    setMaisonEditModalOpen(false);
+  };
+
+  const handleDeleteMaisonEditItem = (id: string) => {
+    const target = maisonEditItems.find((i) => i.id === id);
+    if (target) {
+      const sameCatCount = maisonEditItems.filter((i) => i.category === target.category).length;
+      if (sameCatCount <= 1) {
+        alert(`Keep at least one piece in "${target.category}" so the interactive try-on model stays dressed.`);
+        return;
+      }
+    }
+    if (!confirm('Remove this garment from Western & Maison Edit Studio?')) return;
+    const next = maisonEditItems.filter((i) => i.id !== id);
+    setMaisonEditItems(next);
+    saveMaisonEditItems(next);
+  };
+
+  const handleResetMaisonEdit = () => {
+    if (confirm('Reset Western & Maison Edit Studio to all 12 default mix-and-match pieces?')) {
+      const res = resetMaisonEditItems();
+      setMaisonEditItems(res);
     }
   };
 
@@ -917,35 +1169,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleSyncToFirestore = async () => {
     setFirebaseStatus({ loading: true, message: 'Syncing all storefront sections to Firestore...', type: 'info' });
-    const [catalogResult, railResult, ladiesResult, ladiesRailResult] = await Promise.all([
-      syncCatalogToFirestore(products, looks, settingsForm),
+    const [catalogResult, railResult, ladiesResult, ladiesRailResult, maisonEditSharedResult] = await Promise.all([
+      syncCatalogToFirestore(products, looks, settingsForm, maisonEditItems),
       saveSharedSectionToFirestore('shared_rail', { items: railItems }),
       saveSharedSectionToFirestore('shared_ladies', { pieces: ladiesPieces, settings: ladiesSettings }),
       saveSharedSectionToFirestore('shared_ladies_rail', { items: ladiesRailItems }),
+      saveSharedSectionToFirestore('shared_maison_edit', { items: maisonEditItems }),
     ]);
-    const failed = [catalogResult, railResult, ladiesResult, ladiesRailResult].filter((result) => !result.success);
+    const failed = [catalogResult, railResult, ladiesResult, ladiesRailResult, maisonEditSharedResult].filter(
+      (result) => !result.success
+    );
     setFirebaseStatus({
       loading: false,
       message: failed.length
         ? `Some sections failed to sync: ${failed.map((result) => result.message).join(' ')}`
-        : 'All product, look, rail, ladies, and store settings are saved to Firestore for every device.',
+        : 'All products, models, rails, ladies, Western & Maison Edit studio pieces, and settings are saved to Firestore!',
       type: failed.length ? 'error' : 'success',
     });
   };
 
   const handleFetchFromFirestore = async () => {
-    setFirebaseStatus({ loading: true, message: 'Fetching catalog from Firestore...', type: 'info' });
-    const res = await fetchCatalogFromFirestore();
-    if (res && res.products.length > 0) {
-      onUpdateProducts(res.products);
-      saveProducts(res.products);
+    setFirebaseStatus({ loading: true, message: 'Fetching catalog & Maison Edit from Firestore...', type: 'info' });
+    const [res, cloudMaisonEdit] = await Promise.all([
+      fetchCatalogFromFirestore(),
+      fetchMaisonEditFromFirestore(),
+    ]);
+    let loadedCount = 0;
+    if (res && (res.products.length > 0 || res.looks.length > 0)) {
+      if (res.products.length > 0) {
+        onUpdateProducts(res.products);
+        saveProducts(res.products, false);
+        loadedCount += res.products.length;
+      }
       if (res.looks.length > 0) {
         onUpdateLooks(res.looks);
-        saveLooks(res.looks);
+        saveLooks(res.looks, false);
       }
+    }
+    if (cloudMaisonEdit && cloudMaisonEdit.length > 0) {
+      setMaisonEditItems(cloudMaisonEdit);
+      saveMaisonEditItems(cloudMaisonEdit, false);
+      loadedCount += cloudMaisonEdit.length;
+    }
+    if (loadedCount > 0) {
       setFirebaseStatus({
         loading: false,
-        message: `Loaded ${res.products.length} products and ${res.looks.length} looks from Firestore!`,
+        message: `Loaded ${res?.products.length || 0} products, ${res?.looks.length || 0} looks, and ${cloudMaisonEdit?.length || 0} Western & Maison Edit pieces from Firestore!`,
         type: 'success',
       });
     } else {
@@ -971,7 +1240,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center bg-[#f0f0f0] p-1 rounded-sm gap-1 text-xs font-medium">
+        <div className="flex flex-wrap items-center bg-[#f0f0f0] p-1 rounded-sm gap-1 text-xs font-medium">
           <button
             type="button"
             onClick={() => setActiveTab('fit_studio')}
@@ -1037,6 +1306,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             }`}
           >
             Ladies 3D Tops ({ladiesRailItems.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('maison_edit')}
+            className={`px-3 py-1.5 transition-colors ${
+              activeTab === 'maison_edit'
+                ? 'bg-white text-black shadow-sm font-semibold'
+                : 'text-neutral-600 hover:text-black'
+            }`}
+          >
+            Western &amp; Maison Edit ({maisonEditItems.length})
           </button>
           <button
             type="button"
@@ -1862,13 +2142,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="bg-white border border-[#e4e4e4] p-5 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-600" />
                   <h2 className="text-base font-semibold">
-                    Ladies 3D Hanging Rail Collection ({ladiesRailItems.length} Tops)
+                    Maison Verrel — The Rail ({ladiesRailItems.length} Garments)
                   </h2>
                 </div>
                 <p className="text-xs text-neutral-500 mt-1 max-w-2xl leading-relaxed">
-                  These are the women&apos;s tops and blouses that hang on wooden hangers on your 3D rail. Hovering tilts garments forward with interactive 3D perspective and creates gaps between adjacent clothes. Full add-to-bag & inspection capability.
+                  Garments hanging on the curved gold rail on dark wooden hangers. Hovering turns each piece to face the viewer and opens quick-view with size selection &amp; cart integration.
                 </p>
               </div>
 
@@ -1886,7 +2166,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="px-4 py-2 bg-[#151413] text-white text-xs font-semibold hover:bg-neutral-800 transition-colors flex items-center gap-1.5"
                 >
                   <span>+</span>
-                  <span>Add Ladies Top</span>
+                  <span>Add Rail Garment</span>
                 </button>
               </div>
             </div>
@@ -1903,20 +2183,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
                         Slot #{String(idx + 1).padStart(2, '0')}
                       </span>
-                      <span className="text-[9px] bg-neutral-900 text-neutral-200 px-1.5 py-0.5 uppercase tracking-wider font-semibold">
+                      <span className="text-[9px] bg-[#1A1716] text-[#F6F1E7] px-1.5 py-0.5 uppercase tracking-wider font-semibold">
                         Wooden Hanger
                       </span>
                     </div>
 
                     {/* Garment Image Preview */}
-                    <div className="h-44 bg-[#0d0f12] rounded-sm p-3 flex items-center justify-center relative overflow-hidden mb-3 border border-neutral-800">
-                      {/* Subtle chrome rail line indication */}
-                      <div className="absolute top-3 inset-x-2 h-1 bg-gradient-to-r from-neutral-600 via-neutral-300 to-neutral-600 rounded-full opacity-60 pointer-events-none" />
+                    <div className="h-44 bg-[#FAF7F2] rounded-sm p-3 flex items-center justify-center relative overflow-hidden mb-3 border border-[#DDD5C9]">
+                      {/* Subtle gold rail line indication */}
+                      <div className="absolute top-3 inset-x-2 h-1 bg-gradient-to-r from-[#E9DCBC] via-[#C2A877] to-[#7F6743] rounded-full opacity-80 pointer-events-none" />
 
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="max-h-36 max-w-full object-contain filter drop-shadow-lg"
+                      <ProductThumb
+                        item={item}
+                        className="max-h-36 max-w-full filter drop-shadow-md"
                       />
                     </div>
 
@@ -1980,7 +2259,178 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         )}
 
-        {/* TAB 6: SHOP SETTINGS */}
+        {/* ================================================================== */}
+        {/* TAB 6: WESTERN & MAISON EDIT TRY-ON STUDIO (FULL CRUD)             */}
+        {/* ================================================================== */}
+        {activeTab === 'maison_edit' && (
+          <div className="space-y-6">
+            <div className="bg-white border border-[#e4e4e4] p-5 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-neutral-900" />
+                  <h2 className="text-base font-semibold">
+                    Western Wear &amp; Maison Edit Interactive Studio ({maisonEditItems.length} Pieces)
+                  </h2>
+                </div>
+                <p className="text-xs text-neutral-500 mt-1 max-w-2xl leading-relaxed">
+                  Manage every garment inside the Western Wear interactive 360° &amp; AR try-on section (Tops, Bottoms/Skirts, Shoes, Bags). Every save updates the live storefront and syncs automatically to Firebase Firestore.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModelGroupFilter('western');
+                    setActiveTab('models');
+                  }}
+                  className="px-3 py-2 border border-neutral-800 text-neutral-900 text-xs font-medium hover:bg-neutral-100 transition-colors"
+                >
+                  Manage Western Models →
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetMaisonEdit}
+                  className="px-3 py-2 border border-neutral-300 text-neutral-700 text-xs font-medium hover:bg-neutral-50 transition-colors"
+                >
+                  Reset Defaults
+                </button>
+                <button
+                  type="button"
+                  onClick={openAddMaisonEditModal}
+                  className="px-4 py-2 bg-[#151413] text-white text-xs font-semibold hover:bg-neutral-800 transition-colors flex items-center gap-1.5"
+                >
+                  <span>+</span>
+                  <span>Add Western / Studio Piece</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex flex-wrap items-center gap-2">
+              {([
+                ['all', 'All Pieces'],
+                ['tops', 'Tops'],
+                ['skirts', 'Skirts / Bottoms'],
+                ['shoes', 'Shoes'],
+                ['bags', 'Bags'],
+              ] as const).map(([cat, label]) => {
+                const count =
+                  cat === 'all'
+                    ? maisonEditItems.length
+                    : maisonEditItems.filter((i) => i.category === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setMaisonEditFilterCat(cat)}
+                    className={
+                      maisonEditFilterCat === cat
+                        ? 'px-3 py-1.5 bg-black text-white text-xs font-semibold'
+                        : 'px-3 py-1.5 bg-white border border-neutral-300 text-xs text-neutral-700 hover:border-black'
+                    }
+                  >
+                    {label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Pieces Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {maisonEditItems
+                .filter((i) => maisonEditFilterCat === 'all' || i.category === maisonEditFilterCat)
+                .map((item) => {
+                  const thumbItem = {
+                    name: item.name,
+                    image: item.customImage || ME_PRODUCT_SHEET_URL,
+                    crop: item.customImage
+                      ? undefined
+                      : getMaisonEditCrop(item.sheetCol ?? 0, item.sheetRow ?? 0),
+                  };
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-white border border-[#e4e4e4] p-4 flex flex-col justify-between hover:shadow-md transition-shadow"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-neutral-100 text-neutral-700 px-2 py-0.5">
+                            {ME_STORES[item.store]?.label || item.store}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {item.savedDefault && (
+                              <span className="text-[9px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 font-semibold">
+                                ♥ Saved
+                              </span>
+                            )}
+                            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-mono">
+                              {item.category}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="h-44 bg-[#fbf9f6] border border-[#eeebe6] flex items-center justify-center p-3 overflow-hidden mb-3">
+                          <ProductThumb item={thumbItem} className="w-full h-full max-h-36" />
+                        </div>
+
+                        <h4 className="font-bold text-sm text-neutral-900 truncate" title={item.name}>
+                          {item.name}
+                        </h4>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs font-semibold text-neutral-800">
+                            {formatCurrency(item.price, curr)}
+                          </span>
+                          <span className="text-[10px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5">
+                            Layer: {item.slotKey || 't1'}
+                          </span>
+                        </div>
+                        {item.fitDescription && (
+                          <p className="text-[11px] text-neutral-500 mt-1.5 line-clamp-2">
+                            {item.fitDescription}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(item.sizes || ['S', 'M', 'L']).map((sz) => (
+                            <span
+                              key={sz}
+                              className="text-[10px] px-1.5 py-0.5 bg-neutral-50 border border-neutral-200 text-neutral-600"
+                            >
+                              {sz}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
+                        <span className="text-[10px] text-neutral-400">
+                          {item.customImage ? 'Custom Photo' : `Tile (${item.sheetCol ?? 0},${item.sheetRow ?? 0})`}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => openEditMaisonEditModal(item)}
+                            className="text-neutral-800 hover:text-black font-semibold underline cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMaisonEditItem(item.id)}
+                            className="text-neutral-400 hover:text-red-600 font-medium cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: SHOP SETTINGS */}
         {/* ================================================================== */}
         {activeTab === 'settings' && (
           <div className="space-y-8 max-w-3xl">
@@ -2082,12 +2532,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </form>
 
             <div className="bg-white border border-[#e4e4e4] p-6 space-y-5 text-xs shadow-sm">
-              <div>
-                <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Firebase Admin Login</h3>
-                <p className="text-neutral-500 mt-1">
-                  Login credentials are managed by Firebase Authentication. Enter your current password to confirm changes.
-                  A new email address takes effect after you confirm the verification email.
-                </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Firebase Console &amp; Admin Session</h3>
+                  <p className="text-neutral-500 mt-1">
+                    Connected to Firebase Authentication &amp; Firestore Database for cross-device persistence.
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 text-[11px] font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Connected
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-neutral-50 border border-neutral-200 p-3 text-[11px]">
+                <div>
+                  <span className="text-neutral-400 block uppercase tracking-wider font-semibold">Project ID</span>
+                  <span className="font-mono font-semibold text-neutral-900">
+                    {getFirebaseProjectInfo().projectId || 'Not set'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-neutral-400 block uppercase tracking-wider font-semibold">Database ID</span>
+                  <span className="font-mono font-semibold text-neutral-900">
+                    {getFirebaseProjectInfo().databaseId}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-neutral-400 block uppercase tracking-wider font-semibold">Signed-in Admin</span>
+                  <span className="font-mono font-semibold text-neutral-900 truncate block">
+                    {firebaseUserEmail || getCurrentFirebaseUser()?.email || 'Authenticated'}
+                  </span>
+                </div>
               </div>
 
               {firebaseStatus.message && (
@@ -2883,7 +3359,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="bg-white max-w-md w-full p-6 shadow-2xl border border-neutral-300 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-200 mb-4">
               <h3 className="text-base font-bold text-neutral-900">
-                {editingLadiesRailItem ? 'Edit Ladies 3D Rail Top' : 'Add Ladies Top to 3D Rail'}
+                {editingLadiesRailItem ? 'Edit Maison Verrel Garment' : 'Add Garment to Maison Verrel Rail'}
               </h3>
               <button
                 type="button"
@@ -2896,7 +3372,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <form onSubmit={handleSaveLadiesRailItem} className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold mb-1">Top / Blouse Name</label>
+                <label className="block font-semibold mb-1">Maison Verrel Studio Preset (Optional)</label>
+                <select
+                  value={typeof ladiesRailForm.sheetIndex === 'number' ? String(ladiesRailForm.sheetIndex) : 'custom'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'custom') {
+                      setLadiesRailForm({ ...ladiesRailForm, sheetIndex: undefined, image: '' });
+                    } else {
+                      const k = Number(val);
+                      const preset = MV_CATALOG[k];
+                      if (preset) {
+                        setLadiesRailForm({
+                          ...ladiesRailForm,
+                          sheetIndex: k,
+                          image: MV_SHEETS.front,
+                          name: preset.name,
+                          fitDescription: preset.fitDescription,
+                        });
+                      }
+                    }
+                  }}
+                  className="w-full border border-neutral-300 p-2 bg-neutral-50 focus:border-black focus:outline-none"
+                >
+                  {MV_CATALOG.map((preset) => (
+                    <option key={preset.k} value={preset.k}>
+                      #{preset.k + 1} — {preset.name} (Front + Side + Back 3D Sheets)
+                    </option>
+                  ))}
+                  <option value="custom">Custom Uploaded Garment Image</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Garment Name</label>
                 <input
                   type="text"
                   required
@@ -2904,47 +3413,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onChange={(e) =>
                     setLadiesRailForm({ ...ladiesRailForm, name: e.target.value })
                   }
-                  placeholder="e.g. Silk Georgette Blouse, Linen Wrap Top"
+                  placeholder="e.g. Noir Tailored Blazer, Silk Bias Slip"
                   className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold mb-1">Price ({curr})</label>
-                <input
-                  type="text"
-                  required
-                  value={ladiesRailForm.price}
-                  onChange={(e) =>
-                    setLadiesRailForm({ ...ladiesRailForm, price: e.target.value })
-                  }
-                  placeholder="380.00"
-                  className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Price ({curr})</label>
+                  <input
+                    type="text"
+                    required
+                    value={ladiesRailForm.price}
+                    onChange={(e) =>
+                      setLadiesRailForm({ ...ladiesRailForm, price: e.target.value })
+                    }
+                    placeholder="690.00"
+                    className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Sizes (Comma Separated)</label>
+                  <input
+                    type="text"
+                    value={ladiesRailForm.sizes}
+                    onChange={(e) =>
+                      setLadiesRailForm({ ...ladiesRailForm, sizes: e.target.value })
+                    }
+                    placeholder="S, M, L, XL"
+                    className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block font-semibold mb-1">Fit & Fabric Description</label>
+                <label className="block font-semibold mb-1">Fit &amp; Fabric Description</label>
                 <input
                   type="text"
                   value={ladiesRailForm.fitDescription}
                   onChange={(e) =>
                     setLadiesRailForm({ ...ladiesRailForm, fitDescription: e.target.value })
                   }
-                  placeholder="e.g. Relaxed fluid drape with French seams and pearlescent buttons."
+                  placeholder="e.g. Single-breasted wool blazer with structured shoulder."
                   className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold mb-1">Top Photo URL or Custom Upload</label>
+                <label className="block font-semibold mb-1">Garment Image URL or Custom Upload</label>
                 <input
                   type="text"
                   value={ladiesRailForm.image}
                   onChange={(e) =>
-                    setLadiesRailForm({ ...ladiesRailForm, image: e.target.value })
+                    setLadiesRailForm({
+                      ...ladiesRailForm,
+                      image: e.target.value,
+                      sheetIndex: e.target.value === MV_SHEETS.front ? ladiesRailForm.sheetIndex : undefined,
+                    })
                   }
-                  placeholder="https://... image URL (preferably transparent background)"
+                  placeholder="https://... image URL (transparent PNG looks best on hanger)"
                   className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none mb-2"
                 />
 
@@ -2964,6 +3491,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               setLadiesRailForm({
                                 ...ladiesRailForm,
                                 image: uploadEvent.target.result,
+                                sheetIndex: undefined,
                               });
                             }
                           };
@@ -2973,20 +3501,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     />
                   </label>
                   <span className="text-[10px] text-neutral-400">
-                    PNG transparent cutout looks best on hanger
+                    Presets include Side, Front &amp; Back views
                   </span>
                 </div>
 
                 {ladiesRailForm.image && (
-                  <div className="mt-3 p-3 bg-[#0d0f12] border border-neutral-800 flex items-center gap-3">
-                    <img
-                      src={ladiesRailForm.image}
-                      alt="Preview"
-                      className="w-14 h-16 object-contain filter drop-shadow-md"
-                    />
-                    <div className="text-[11px] text-neutral-300">
-                      <b className="text-white block">Top preview loaded</b>
-                      Garment will hang suspended from wooden hanger with 3D mouse swing & hover gaps.
+                  <div className="mt-3 p-3 bg-[#FAF7F2] border border-[#DDD5C9] flex items-center gap-3">
+                    <div className="w-14 h-16 flex items-center justify-center shrink-0">
+                      <ProductThumb
+                        item={{
+                          name: ladiesRailForm.name || 'Preview',
+                          image: ladiesRailForm.image,
+                          crop:
+                            typeof ladiesRailForm.sheetIndex === 'number' &&
+                            ladiesRailForm.image === MV_SHEETS.front
+                              ? getMvCropBox('front', ladiesRailForm.sheetIndex)
+                              : undefined,
+                        }}
+                        className="w-14 h-16"
+                      />
+                    </div>
+                    <div className="text-[11px] text-[#746A5E]">
+                      <b className="text-[#1A1716] block">Garment preview loaded</b>
+                      Hangs from the curved gold rail with pendulum swing &amp; quick-view drawer.
                     </div>
                   </div>
                 )}
@@ -3005,6 +3542,250 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="px-5 py-2 bg-black text-white font-semibold hover:bg-neutral-800"
                 >
                   Save Piece to Rail
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL: ADD / EDIT WESTERN & MAISON EDIT PIECE */}
+      {/* ==================================================================== */}
+      {maisonEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white max-w-lg w-full p-6 shadow-2xl border border-neutral-300 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 mb-4">
+              <h3 className="text-base font-bold text-neutral-900">
+                {editingMaisonEditItem ? 'Edit Western & Maison Edit Piece' : 'Add New Western & Studio Piece'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setMaisonEditModalOpen(false)}
+                className="text-neutral-400 hover:text-black text-xl cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMaisonEditItem} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold mb-1">Garment Name</label>
+                <input
+                  type="text"
+                  required
+                  value={maisonEditForm.name}
+                  onChange={(e) => setMaisonEditForm({ ...maisonEditForm, name: e.target.value })}
+                  placeholder="e.g. Ribbed Turtleneck, Denim Mini Skirt"
+                  className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Store Brand</label>
+                  <select
+                    value={maisonEditForm.store}
+                    onChange={(e) =>
+                      setMaisonEditForm({
+                        ...maisonEditForm,
+                        store: e.target.value as MaisonEditStoreId,
+                      })
+                    }
+                    className="w-full border border-neutral-300 p-2.5 bg-white focus:border-black focus:outline-none"
+                  >
+                    {Object.values(ME_STORES).map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1">Category</label>
+                  <select
+                    value={maisonEditForm.category}
+                    onChange={(e) => {
+                      const cat = e.target.value as MaisonEditCategory;
+                      const firstSlot = ME_SLOT_KEYS.find((s) => s.category === cat)?.key || 't1';
+                      setMaisonEditForm({
+                        ...maisonEditForm,
+                        category: cat,
+                        slotKey: firstSlot,
+                        sizes: cat === 'shoes' ? '36, 37, 38, 39, 40' : cat === 'bags' ? 'One Size' : 'XS, S, M, L',
+                      });
+                    }}
+                    className="w-full border border-neutral-300 p-2.5 bg-white focus:border-black focus:outline-none"
+                  >
+                    <option value="tops">Tops</option>
+                    <option value="skirts">Bottoms / Skirts</option>
+                    <option value="shoes">Shoes</option>
+                    <option value="bags">Bags</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">3D Try-On Mannequin Layer</label>
+                <select
+                  value={maisonEditForm.slotKey}
+                  onChange={(e) => setMaisonEditForm({ ...maisonEditForm, slotKey: e.target.value })}
+                  className="w-full border border-neutral-300 p-2.5 bg-white focus:border-black focus:outline-none"
+                >
+                  {ME_SLOT_KEYS.filter((s) => s.category === maisonEditForm.category).map((slot) => (
+                    <option key={slot.key} value={slot.key}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  Controls which feathered 3D drape mask renders on the turntable mannequin when clicked.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Price ({curr})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={maisonEditForm.price}
+                    onChange={(e) => setMaisonEditForm({ ...maisonEditForm, price: e.target.value })}
+                    className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Sizes (Comma-separated)</label>
+                  <input
+                    type="text"
+                    value={maisonEditForm.sizes}
+                    onChange={(e) => setMaisonEditForm({ ...maisonEditForm, sizes: e.target.value })}
+                    placeholder="XS, S, M, L"
+                    className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1">Style Tags (Comma-separated)</label>
+                  <input
+                    type="text"
+                    value={maisonEditForm.tags}
+                    onChange={(e) => setMaisonEditForm({ ...maisonEditForm, tags: e.target.value })}
+                    placeholder="minimal, soft, wine, casual"
+                    className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                  />
+                </div>
+                <div className="flex items-end pb-2">
+                  <label className="inline-flex items-center gap-2 cursor-pointer font-semibold text-neutral-800">
+                    <input
+                      type="checkbox"
+                      checked={maisonEditForm.savedDefault}
+                      onChange={(e) =>
+                        setMaisonEditForm({ ...maisonEditForm, savedDefault: e.target.checked })
+                      }
+                    />
+                    <span>Highlight in Saved (♥) tab</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Fit &amp; Style Description</label>
+                <input
+                  type="text"
+                  value={maisonEditForm.fitDescription}
+                  onChange={(e) =>
+                    setMaisonEditForm({ ...maisonEditForm, fitDescription: e.target.value })
+                  }
+                  placeholder="e.g. Fine-gauge fitted turtleneck in ink black."
+                  className="w-full border border-neutral-300 p-2.5 focus:border-black focus:outline-none"
+                />
+              </div>
+
+              {/* Studio Sprite Tile Picker OR Custom Photo Upload */}
+              <div className="border border-neutral-200 p-3 bg-neutral-50 space-y-3">
+                <div>
+                  <label className="block font-semibold mb-1">Built-in Product Sheet Tile (or upload custom below)</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[0, 1, 2, 3].map((r) =>
+                      [0, 1, 2].map((c) => {
+                        const selected =
+                          !maisonEditForm.customImage &&
+                          maisonEditForm.sheetRow === r &&
+                          maisonEditForm.sheetCol === c;
+                        return (
+                          <button
+                            key={`${c}-${r}`}
+                            type="button"
+                            onClick={() =>
+                              setMaisonEditForm({
+                                ...maisonEditForm,
+                                sheetCol: c,
+                                sheetRow: r,
+                                customImage: '',
+                              })
+                            }
+                            className={`h-14 border bg-white p-1 flex items-center justify-center transition-all ${
+                              selected ? 'border-black ring-2 ring-black/20' : 'border-neutral-200 hover:border-neutral-400'
+                            }`}
+                            title={`Row ${r + 1}, Col ${c + 1}`}
+                          >
+                            <ProductThumb
+                              item={{
+                                name: `Tile ${c}-${r}`,
+                                image: ME_PRODUCT_SHEET_URL,
+                                crop: getMaisonEditCrop(c, r),
+                              }}
+                              className="w-full h-full"
+                            />
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-neutral-200 space-y-2">
+                  <label className="block font-semibold">Custom Photo Upload or URL (Optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      handleImageFileUpload(e, (dataUrl) =>
+                        setMaisonEditForm((prev) => ({ ...prev, customImage: dataUrl }))
+                      )
+                    }
+                    className="text-xs"
+                  />
+                  <input
+                    type="url"
+                    value={maisonEditForm.customImage}
+                    onChange={(e) =>
+                      setMaisonEditForm({ ...maisonEditForm, customImage: e.target.value })
+                    }
+                    placeholder="https://... (leave empty to use selected studio tile)"
+                    className="w-full border border-neutral-300 p-2 bg-white focus:border-black focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-neutral-200">
+                <button
+                  type="button"
+                  onClick={() => setMaisonEditModalOpen(false)}
+                  className="px-4 py-2 border border-neutral-300 hover:bg-neutral-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-black text-white font-semibold hover:bg-neutral-800"
+                >
+                  Save Studio Piece
                 </button>
               </div>
             </form>

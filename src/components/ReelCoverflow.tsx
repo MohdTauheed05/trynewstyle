@@ -58,7 +58,7 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
   const wheelAt = useRef(0);
   const active = reels.length ? reels[((activeIndex % reels.length) + reels.length) % reels.length] : null;
   const rawPlayback = active ? resolveReelPlayback(active.videoUrl) : null;
-  const playback = rawPlayback?.kind === 'resolve' && resolvedTikTok?.reelId === active?.id
+  const playback = rawPlayback?.kind === 'resolve' && active && resolvedTikTok && resolvedTikTok.reelId === active.id
     ? { kind: 'embed' as const, src: resolvedTikTok.src }
     : rawPlayback;
   const activeProducts = useMemo(() => active ? active.productIds.map((id) => products.find((item) => item.id === id)).filter((item): item is Product => Boolean(item)) : [], [active, products]);
@@ -155,9 +155,7 @@ export const ReelCoverflow: React.FC<ReelCoverflowProps> = ({ reels, products, s
             return <div key={reel.id} role={offset === 0 ? undefined : 'button'} tabIndex={offset === 0 ? -1 : 0} className={'rf-card' + (offset === 0 ? ' is-active' : '')} aria-label={offset === 0 ? undefined : 'Show ' + reel.title} style={{transform:'translate(-50%,-50%) translateX(' + x + 'px) translateY(' + y + 'px) rotateY(' + rotate + 'deg) scale(' + scale + ')',zIndex:10-abs,opacity}} onClick={() => {
               if (offset) {
                 shift(offset);
-                const reelPlayback = resolveReelPlayback(reel.videoUrl);
-                if (reelPlayback.kind === 'embed' || reelPlayback.kind === 'resolve' || reelPlayback.kind === 'file') setStartedReelId(reel.id);
-              } else if (playback?.kind === 'embed') setStartedReelId(reel.id);
+              }
             }} onKeyDown={(event) => { if (offset && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); shift(offset); } }}>
               {offset === 0 && playback?.kind === 'file' && !videoFailed
                 ? <video src={playback.src} poster={reel.posterUrl || undefined} autoPlay muted loop playsInline controls onError={() => setVideoFailed(true)} />

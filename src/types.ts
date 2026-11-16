@@ -86,3 +86,21 @@ export interface LadiesSectionSettings {
   firstLookNumber: number;
 }
 
+export type MaisonEditStoreId = 'norra' | 'lune' | 'meridian' | 'ode';
+export type MaisonEditCategory = 'tops' | 'skirts' | 'shoes' | 'bags';
+
+export interface MaisonEditProduct {
+  id: string;
+  slotKey?: string; // 't1'|'t2'|'t3'|'k1'|'k2'|'k3'|'s1'|'s2'|'s3'|'g1'|'g2'|'g3'
+  category: MaisonEditCategory;
+  store: MaisonEditStoreId;
+  name: string;
+  price: number;
+  sheetCol?: number;
+  sheetRow?: number;
+  customImage?: string;
+  tags?: string[];
+  sizes?: string[];
+  savedDefault?: boolean;
+  fitDescription?: string;
+}
