@@ -304,16 +304,6 @@ export const PageRibbonSection: React.FC<PageRibbonSectionProps> = ({ shopName }
         onPointerCancel={handlePointerUp}
       >
         <div className="pr-noise" aria-hidden="true" />
-        <header className="pr-topline">
-          <span>
-            <i /> {shopName.toUpperCase()} · PAGE INDEX
-          </span>
-          <span className="pr-topline-right">
-            {viewMode === 'circle'
-              ? 'ROUNDING CIRCLE · CLICK ANY PAGE TO OPEN IT'
-              : 'FLAT GALLERY VIEW · CLICK ANY CARD TO JUMP TO PAGE'}
-          </span>
-        </header>
 
         <div className="pr-headline" aria-hidden="true">
           <span>THE STYLE</span>

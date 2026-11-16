@@ -130,8 +130,7 @@ const GarmentVisual: React.FC<{
 };
 
 export const LadiesRailSection: React.FC<LadiesRailSectionProps> = ({
-  shopName = 'Maison Verrel',
-  currencySymbol = '$',
+    currencySymbol = '$',
   onOpenBag,
 }) => {
   const curr = cleanCurrencySymbol(currencySymbol) || '$';
@@ -688,11 +687,11 @@ export const LadiesRailSection: React.FC<LadiesRailSectionProps> = ({
         ['--mv-u' as any]: `${u}px`,
         height: isPhone ? 'min(92svh, 790px)' : 'min(92svh, 900px)',
         minHeight: isPhone ? '640px' : '660px',
-        backgroundColor: '#FAF7F2',
+        backgroundColor: '#ffffff',
         color: '#1A1716',
         fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
       }}
-      aria-label="Maison Verrel — The Rail"
+      aria-label="Ladies collection 3D rail"
     >
       <style>{`
         .mv-section * { box-sizing: border-box; }
@@ -793,131 +792,7 @@ export const LadiesRailSection: React.FC<LadiesRailSectionProps> = ({
       `}</style>
 
       <div className={`mv-page ${drawerOpen && !isPhone ? 'is-shifted' : ''}`}>
-        {/* 1. Utility Bar */}
-        <div
-          className="w-full shrink-0 border-b border-[#DDD5C9] flex items-center justify-between px-4 sm:px-8"
-          style={{
-            backgroundColor: '#EFEBE4',
-            height: isPhone ? '30px' : '32px',
-            fontSize: isPhone ? '9px' : '10px',
-            letterSpacing: '0.16em',
-            color: '#746A5E',
-          }}
-        >
-          <span className="truncate uppercase">
-            Maison Verrel Atelier · The Autumn / Winter Rail
-          </span>
-          <span className="hidden sm:inline uppercase">
-            {N} Hanging Pieces · Complimentary Velvet Garment Care
-          </span>
-        </div>
-
-        {/* 2. Boutique Nav Header */}
-        <header
-          className="w-full shrink-0 border-b border-[#DDD5C9] px-4 sm:px-10 flex items-center justify-between gap-3 relative z-30"
-          style={{ height: isPhone ? '62px' : '74px', backgroundColor: '#FAF7F2' }}
-        >
-          <div className="flex items-baseline gap-3 min-w-0">
-            <span className="mv-serif text-xl sm:text-3xl tracking-[0.14em] uppercase text-[#1A1716] whitespace-nowrap">
-              Maison Verrel
-            </span>
-            <span className="hidden md:inline-block text-[10px] tracking-[0.2em] uppercase text-[#746A5E]">
-              {shopName !== 'Maison Verrel' ? `× ${shopName}` : 'Studio'}
-            </span>
-          </div>
-
-          {/* Search Pill */}
-          <div
-            className="hidden sm:flex items-center gap-2 rounded-full px-3.5 py-1.5 border border-[#DDD5C9] w-64 md:w-80 transition-colors focus-within:border-[#1A1716]"
-            style={{ backgroundColor: '#EDE8DF' }}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#746A5E"
-              strokeWidth="1.8"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search coats, slips, blazers..."
-              className="w-full bg-transparent text-xs text-[#1A1716] placeholder-[#746A5E] focus:outline-none"
-              aria-label="Search garments on rail"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="text-xs text-[#746A5E] hover:text-[#1A1716] cursor-pointer px-1"
-                aria-label="Clear search"
-              >
-                ×
-              </button>
-            )}
-          </div>
-
-          {/* Nav Right: Rail Arrows + Bag */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => scrollBy(-320 * u)}
-                aria-label="Slide rail left"
-                className="w-8 h-8 rounded-full border border-[#DDD5C9] hover:border-[#1A1716] flex items-center justify-center text-[#1A1716] text-xs transition-colors cursor-pointer bg-[#FAF7F2]"
-              >
-                ←
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollBy(320 * u)}
-                aria-label="Slide rail right"
-                className="w-8 h-8 rounded-full border border-[#DDD5C9] hover:border-[#1A1716] flex items-center justify-center text-[#1A1716] text-xs transition-colors cursor-pointer bg-[#FAF7F2]"
-              >
-                →
-              </button>
-            </div>
-
-            <button
-              ref={bagBtnRef}
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              aria-label={`Open shopping bag (${bagCount} items)`}
-              className={`relative flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#DDD5C9] hover:border-[#1A1716] transition-colors cursor-pointer bg-[#F6F1E7] ${
-                bagPulse ? 'mv-bag-bounce' : ''
-              }`}
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#1A1716"
-                strokeWidth="1.6"
-                aria-hidden="true"
-              >
-                <path d="M5 8h14l1 13H4Z" />
-                <path d="M9 10V6a3 3 0 0 1 6 0v4" />
-              </svg>
-              <span className="text-[11px] font-medium tracking-[0.14em] uppercase text-[#1A1716]">
-                Bag
-              </span>
-              <span
-                className="min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center text-[10px] font-semibold"
-                style={{ backgroundColor: '#0E0D0C', color: '#FAF7F2' }}
-              >
-                {bagCount}
-              </span>
-            </button>
-          </div>
-        </header>
-
+        {/* Shared site navigation stays in the sticky global header. */}
         {/* 3. Studio Headline + Editorial Subtitle */}
         <div className="relative z-20 pointer-events-none px-4 sm:px-10 pt-5 sm:pt-7 flex flex-col sm:flex-row sm:items-end justify-between gap-1">
           <div>
@@ -1065,7 +940,7 @@ export const LadiesRailSection: React.FC<LadiesRailSectionProps> = ({
                       style={{
                         top: `${(44 * u).toFixed(0)}px`,
                         right: `${(isPhone ? 24 : 36) * u}px`,
-                        backgroundColor: '#F6F1E7',
+                        backgroundColor: '#ffffff',
                         color: '#1A1716',
                         fontSize: `${Math.max(8, 10 * u)}px`,
                         letterSpacing: '0.06em',
@@ -1158,9 +1033,7 @@ export const LadiesRailSection: React.FC<LadiesRailSectionProps> = ({
             {/* Header bar inside Quick-View */}
             <div className="flex items-center justify-between px-5 sm:px-10 py-4 border-b border-[#DDD5C9]">
               <div className="flex items-center gap-3">
-                <span className="mv-serif text-xl sm:text-2xl tracking-[0.14em] uppercase">
-                  Maison Verrel
-                </span>
+                
                 <span className="text-[10px] tracking-[0.18em] uppercase text-[#746A5E]">
                   Piece {String(qvIdx + 1).padStart(2, '0')} / {String(N).padStart(2, '0')}
                 </span>
@@ -1235,7 +1108,7 @@ export const LadiesRailSection: React.FC<LadiesRailSectionProps> = ({
               <div className="lg:col-span-5 flex flex-col gap-5 max-w-md w-full mx-auto">
                 <div>
                   <span className="text-[10px] tracking-[0.2em] uppercase text-[#746A5E] block mb-1.5">
-                    Maison Verrel · Atelier
+                    Product details
                   </span>
                   <h3 className="mv-serif text-3xl sm:text-4xl text-[#1A1716] leading-tight">
                     {activeQvItem.name}
@@ -1381,7 +1254,7 @@ export const LadiesRailSection: React.FC<LadiesRailSectionProps> = ({
               <div className="px-6 py-5 border-b border-[#DDD5C9] flex items-center justify-between">
                 <div>
                   <span className="text-[10px] tracking-[0.2em] uppercase text-[#746A5E] block">
-                    Maison Verrel
+                    Shopping bag
                   </span>
                   <h3 className="mv-serif text-2xl text-[#1A1716] mt-0.5">
                     Your Bag ({bagCount})

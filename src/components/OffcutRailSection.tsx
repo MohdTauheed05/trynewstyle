@@ -409,7 +409,7 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
     <section
       ref={sectionRef}
       id="offcut-rail-section"
-      className="relative isolate w-full bg-[#0b0b0c] text-[#f1efec] overflow-hidden flex flex-col items-center justify-center select-none"
+      className="relative isolate w-full bg-white text-[#16191f] overflow-hidden flex flex-col items-center justify-center select-none"
       style={{
         minHeight: isMobile ? '720px' : `${Math.round(1000 * scaleK)}px`,
         height: isMobile ? 'auto' : `${Math.round(1000 * scaleK)}px`,
@@ -421,7 +421,7 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
       {/* ==================================================================== */}
       {isMobile ? (
         <div
-          className="w-full min-h-[720px] py-8 px-4 flex flex-col justify-between items-center relative bg-gradient-to-b from-[#18181a] via-[#111113] to-[#0b0b0c]"
+          className="w-full min-h-[720px] py-8 px-4 flex flex-col justify-between items-center relative bg-white"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -430,8 +430,8 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
             <span className="text-[10px] tracking-[0.24em] uppercase text-[#8d8a86] font-semibold block mb-1">
               3D Hanging Rail
             </span>
-            <h2 className="text-3xl font-black uppercase text-[#f1efec] tracking-wider">
-              {shopName || 'Atelier'}
+            <h2 className="text-3xl font-black uppercase text-[#16191f] tracking-wider">
+              3D Hanging Rail
             </h2>
             <p className="text-[11px] text-[#8d8a86] tracking-wider uppercase mt-1">
               Swipe or tap clothes to inspect fit
@@ -446,7 +446,7 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
               style={{
                 background:
                   'linear-gradient(180deg, #fafafa 0%, #b9bcc1 28%, #5d6066 55%, #a9adb3 78%, #e6e7e9 100%)',
-                boxShadow: '0 8px 16px rgba(0,0,0,0.6)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.18)',
               }}
             >
               {/* Left metallic cap */}
@@ -569,38 +569,6 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
             </div>
           )}
 
-          {/* Mobile Bottom Bar: About on Left & Contact on Right */}
-          <div className="w-full max-w-xs mx-auto flex items-center justify-between mt-8 pt-4 border-t border-neutral-800/80 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8d8a86]">
-            <button
-              type="button"
-              onClick={() => setAboutModalOpen(true)}
-              className="py-1 px-1 hover:text-white transition-colors cursor-pointer"
-            >
-              About
-            </button>
-            <span className="text-[10px] text-neutral-600">
-              {shopName} Studio
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                if (whatsappNumber) {
-                  const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
-                  window.open(
-                    `https://wa.me/${cleanPhone}?text=Hello%20${encodeURIComponent(
-                      shopName
-                    )}!`,
-                    '_blank'
-                  );
-                } else {
-                  setContactModalOpen(true);
-                }
-              }}
-              className="py-1 px-1 hover:text-white transition-colors cursor-pointer"
-            >
-              Contact
-            </button>
-          </div>
         </div>
       ) : (
         /* ================================================================== */
@@ -615,8 +583,7 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
             height: '1000px',
             transform: `translate(-50%, -50%) scale(${scaleK})`,
             transformOrigin: 'center center',
-            background:
-              'radial-gradient(70% 55% at 50% 40%, #18181a 0%, #0b0b0c 100%)',
+            background: '#ffffff',
           }}
         >
           {/* Center Site Logo from Admin */}
@@ -627,15 +594,15 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
             }`}
           >
             <h2
-              className="text-[52px] md:text-[60px] leading-none tracking-tight text-[#f1efec] font-black uppercase"
+              className="text-[52px] md:text-[60px] leading-none tracking-tight text-[#16191f] font-black uppercase"
               style={{
                 fontFamily: "'Inter', sans-serif",
                 letterSpacing: '0.04em',
               }}
             >
-              {shopName || 'Atelier'}
+              3D Hanging Rail
             </h2>
-            <span className="block text-[11px] tracking-[0.24em] uppercase text-[#8d8a86] mt-2 font-medium">
+            <span className="block text-[11px] tracking-[0.24em] uppercase text-[#6b7280] mt-2 font-medium">
               3D Collection & Fitting Rail
             </span>
           </div>
@@ -649,7 +616,7 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
             style={{
               background:
                 'linear-gradient(180deg, #fafafa 0%, #b9bcc1 28%, #5d6066 55%, #a9adb3 78%, #e6e7e9 100%)',
-              boxShadow: '0 10px 18px rgba(0,0,0,0.45)',
+              boxShadow: '0 10px 18px rgba(0,0,0,0.16)',
             }}
           >
             {/* Left end cap */}
@@ -759,54 +726,13 @@ export const OffcutRailSection: React.FC<OffcutRailSectionProps> = ({
                 onOpenBag();
               }
             }}
-            className={`absolute left-1/2 top-[740px] -translate-x-1/2 h-[38px] px-[24px] rounded-[40px] border border-[rgba(241,239,236,0.6)] text-[12px] font-medium tracking-[0.12em] uppercase inline-grid place-items-center transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:bg-[#f1efec] hover:text-[#0b0b0c] cursor-pointer ${
+            className={`absolute left-1/2 top-[740px] -translate-x-1/2 h-[38px] px-[24px] rounded-[40px] border border-[#16191f] text-[#16191f] text-[12px] font-medium tracking-[0.12em] uppercase inline-grid place-items-center transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:bg-[#16191f] hover:text-white cursor-pointer ${
               openIdx >= 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'
             }`}
           >
             See availability
           </button>
 
-          {/* BOTTOM SECTION: About on Left & Contact on Right */}
-          <div
-            id="bottom-bar"
-            className={`absolute left-0 right-0 bottom-[36px] px-[50px] flex items-center justify-between text-[12px] font-medium tracking-[0.14em] uppercase text-[#8d8a86] z-10 transition-all duration-700 ${
-              openIdx >= 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setAboutModalOpen(true)}
-              className="hover:text-[#f1efec] transition-colors flex items-center gap-2 group cursor-pointer"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#8d8a86] group-hover:bg-[#f1efec] transition-colors" />
-              <span>About</span>
-            </button>
-
-            <div className="text-[10px] tracking-[0.2em] text-[#555] uppercase hidden sm:block">
-              {shopName} Studio Edition
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (whatsappNumber) {
-                  const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
-                  window.open(
-                    `https://wa.me/${cleanPhone}?text=Hello%20${encodeURIComponent(
-                      shopName
-                    )}!`,
-                    '_blank'
-                  );
-                } else {
-                  setContactModalOpen(true);
-                }
-              }}
-              className="hover:text-[#f1efec] transition-colors flex items-center gap-2 group cursor-pointer"
-            >
-              <span>Contact</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#8d8a86] group-hover:bg-[#f1efec] transition-colors" />
-            </button>
-          </div>
         </div>
       )}
 

@@ -762,8 +762,7 @@ export const VirtualStudio: React.FC<VirtualStudioProps> = ({
             ================================================================ */}
         <div className="me-left">
           <div className="me-top-row">
-            <h2 className="me-logo">MAISON EDIT</h2>
-            <button
+<button
               type="button"
               className="me-menu-btn"
               aria-label="Toggle Western wear model selector"

@@ -259,7 +259,7 @@ export const ProductSpotlightCarousel: React.FC<ProductSpotlightCarouselProps> =
   return (
     <section className="reelmark-products" aria-labelledby="reelmark-products-title" onWheel={handleWheel}>
       <style>{`
-        .reelmark-products{--rm-ink:#101410;--rm-green:#08482d;--rm-mint:#dae7c7;background:#f5f8ef;color:var(--rm-ink);padding:clamp(52px,7vw,100px) 0 clamp(38px,5vw,72px);overflow:hidden}
+        .reelmark-products{--rm-ink:#101410;--rm-green:#08482d;--rm-mint:#dae7c7;background:#ffffff;color:var(--rm-ink);padding:clamp(52px,7vw,100px) 0 clamp(38px,5vw,72px);overflow:hidden}
         .reelmark-products *{box-sizing:border-box}
         .rm-heading{width:min(1160px,calc(100% - 48px));margin:0 auto 18px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:16px}
         .rm-badge{display:inline-flex;align-items:center;gap:8px;width:max-content;background:var(--rm-mint);color:var(--rm-green);border-radius:99px;padding:9px 15px;font:500 11px/1.2 Inter,Arial,sans-serif;letter-spacing:.04em}

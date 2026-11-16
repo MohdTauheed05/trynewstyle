@@ -2439,7 +2439,7 @@ button:focus-visible, a:focus-visible {
    Maison Edit — Build Your Look Virtual Studio (#virtual-studio)
    -------------------------------------------------------------------------- */
 #virtual-studio.maison-edit {
-  --page: #efede9;
+  --page: #ffffff;
   --panel: #f7f6f3;
   --tile: #ebe9e5;
   --ink: #151515;
@@ -3926,8 +3926,8 @@ button:focus-visible, a:focus-visible {
   width: 100%;
   min-height: clamp(700px, 92vh, 880px);
   overflow: hidden;
-  background: #141417;
-  color: #ffffff;
+  background: #ffffff;
+  color: #16191f;
   scroll-margin-top: var(--header-h, 64px);
   user-select: none;
   -webkit-user-select: none;
@@ -4575,3 +4575,20 @@ button:focus-visible, a:focus-visible {
 
 
 
+
+
+/* Store-wide white page canvas: the shared sticky header is the only site header. */
+#western-orbit-studio.virtual-studio { background: #fff; color: #16191f; }
+#western-orbit-studio .vs-background,
+#western-orbit-studio .vs-shade,
+#western-orbit-studio .vs-header { display: none !important; }
+#western-orbit-studio .vs-content { padding-top: 22px; }
+.page-ribbon { color: #171717; background: #fff; }
+.pr-stage { background: #fff !important; }
+.pr-noise { opacity: .06; background-image: radial-gradient(rgba(0,0,0,.16) .7px, transparent .8px); }
+.pr-noise::after { display: none; }
+.pr-headline { color: rgba(20,20,20,.9); }
+.pr-intro, .pr-stage.is-flat .pr-intro { color: rgba(20,20,20,.62); }
+.pr-orbit { border-color: rgba(20,20,20,.13); box-shadow: 0 0 40px rgba(0,0,0,.025), inset 0 0 55px rgba(0,0,0,.018); }
+.pr-orbit-two { border-color: rgba(20,20,20,.08); }
+.pr-caption, .pr-counter { color: #5f5f5f; }

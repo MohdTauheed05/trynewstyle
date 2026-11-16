@@ -206,20 +206,7 @@ export const WesternOrbitSection: React.FC<WesternOrbitSectionProps> = ({
       className="virtual-studio"
       aria-label="Virtual Styling Studio — Western Models"
     >
-      <div
-        className="vs-background"
-        style={{ backgroundImage: `url("${BG_URL}")` }}
-        aria-hidden="true"
-      />
-      <div className="vs-shade" aria-hidden="true" />
-
       <div className="vs-content">
-        <header className="vs-header">
-          <div className="vs-brand">
-            <strong>{shopName || 'Try the Look'}</strong>
-            <span>VIRTUAL STYLING STUDIO</span>
-          </div>
-        </header>
 
         <div className="vs-stage">
           {/* Top-Left Active Model Frosted Profile Pill */}
