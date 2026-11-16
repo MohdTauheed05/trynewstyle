@@ -211,7 +211,7 @@ export default function App() {
       if (ladies?.settings) saveLadiesSettings(ladies.settings, false);
       if (ladiesRail?.items) saveLadiesRailItems(ladiesRail.items, false);
       const nextMaisonEdit = maisonEditCollection?.length ? maisonEditCollection : sharedMaisonEdit?.items;
-      if (Array.isArray(nextMaisonEdit)) saveMaisonEditItems(nextMaisonEdit, false);
+      if (nextMaisonEdit?.length) saveMaisonEditItems(nextMaisonEdit, false);
     };
     void loadSharedStoreData().catch((error) => console.error('Failed to load shared Firestore data:', error));
     return () => {

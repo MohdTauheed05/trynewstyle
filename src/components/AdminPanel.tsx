@@ -1105,7 +1105,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleResetMaisonEdit = () => {
-    if (confirm('Clear all Maison Edit products from this device and shared store?')) {
+    if (confirm('Reset Western & Maison Edit Studio to all 12 default mix-and-match pieces?')) {
       const res = resetMaisonEditItems();
       setMaisonEditItems(res);
     }

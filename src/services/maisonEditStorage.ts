@@ -281,25 +281,15 @@ const STORAGE_KEY_MAISON_EDIT = 'runway_maison_edit_v1';
 export function getStoredMaisonEditItems(): MaisonEditProduct[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_MAISON_EDIT);
-    if (!raw) return [];
-
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    // Remove the old built-in demo catalog from browsers that cached it before
-    // products were managed from the shared store.
-    const isLegacyDemo =
-      parsed.length === DEFAULT_MAISON_EDIT_ITEMS.length &&
-      DEFAULT_MAISON_EDIT_ITEMS.every((demo) =>
-        parsed.some((item: any) =>
-          item?.id === demo.id && item?.name === demo.name && Number(item?.price) === demo.price
-        )
-      );
-    return isLegacyDemo ? [] : (parsed as MaisonEditProduct[]);
+    if (!raw) return DEFAULT_MAISON_EDIT_ITEMS;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
   } catch (e) {
     console.error('Failed to read Maison Edit items from storage', e);
-    return [];
   }
+  return DEFAULT_MAISON_EDIT_ITEMS;
 }
 
 export function saveMaisonEditItems(items: MaisonEditProduct[], persistCloud = true): void {
@@ -323,9 +313,10 @@ export function saveMaisonEditItems(items: MaisonEditProduct[], persistCloud = t
 
 export function resetMaisonEditItems(): MaisonEditProduct[] {
   try {
-    saveMaisonEditItems([], true);
+    localStorage.removeItem(STORAGE_KEY_MAISON_EDIT);
+    saveMaisonEditItems(DEFAULT_MAISON_EDIT_ITEMS, true);
   } catch (e) {
     console.error('Failed to reset Maison Edit items', e);
   }
-  return [];
+  return DEFAULT_MAISON_EDIT_ITEMS;
 }
