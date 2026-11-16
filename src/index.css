@@ -2468,8 +2468,39 @@ button:focus-visible, a:focus-visible {
   gap: 0;
   position: relative;
 }
-@media (max-width: 1100px) {
-  .me-app { padding: 0 3vw; }
+@media (min-width: 861px) and (max-width: 1100px) {
+  .me-app {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: minmax(280px, .9fr) minmax(320px, 1.1fr);
+    padding: 24px clamp(16px, 3vw, 32px);
+    gap: 20px;
+    align-items: stretch;
+  }
+  .me-left {
+    grid-column: 1;
+    grid-row: 1;
+    height: min(720px, 78svh);
+    min-height: 620px;
+    padding: 0;
+  }
+  .me-stage {
+    grid-column: 2;
+    grid-row: 1;
+    height: min(720px, 78svh);
+    min-height: 620px;
+  }
+  .me-right {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 16px;
+    padding: 0;
+  }
+  .me-look-panel { max-height: 340px; }
+  .me-rec-card { min-width: 0; }
 }
 
 /* Left Column: Shop Panel */
@@ -3460,18 +3491,47 @@ button:focus-visible, a:focus-visible {
 /* Mobile & Tablet Stack (<= 860px) */
 @media (max-width: 860px) {
   .me-app {
+    width: 100%;
     height: auto;
-    grid-template-columns: 1fr;
-    padding: 0 16px 24px;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 clamp(12px, 4vw, 20px) 24px;
     gap: 14px;
+    box-sizing: border-box;
   }
-  .me-left { order: 3; padding: 0; height: 86svh; min-height: 540px; }
-  .me-stage { order: 1; height: min(86svh, 720px); min-height: 460px; }
-  .me-right { order: 2; padding: 0; }
+  .me-left {
+    order: 3;
+    min-width: 0;
+    padding: 0;
+    height: min(78svh, 680px);
+    min-height: 500px;
+  }
+  .me-stage {
+    order: 1;
+    width: 100%;
+    height: min(78svh, 660px);
+    min-height: 440px;
+  }
+  .me-right {
+    order: 2;
+    min-width: 0;
+    padding: 0;
+  }
   .me-rail { left: 2%; top: 10%; }
   .me-worn-strip { left: auto; right: 2%; top: 12%; }
   .me-mode-pill { left: auto; right: 2%; top: 2.5%; }
   .me-figure { left: 50%; height: 84%; }
+  .me-look-panel { max-height: none; }
+  .me-rec-card, .me-look-panel, .me-shop-panel { min-width: 0; }
+  .me-grid { gap: 12px; }
+}
+@media (max-width: 480px) {
+  .me-app { padding-left: 12px; padding-right: 12px; gap: 12px; }
+  .me-stage { height: min(76svh, 600px); min-height: 420px; }
+  .me-left { height: min(74svh, 620px); min-height: 480px; }
+  .me-rec-card { padding: 14px; }
+  .me-rec-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .me-look-row { grid-template-columns: 42px minmax(0, 1fr) auto; gap: 7px; }
 }
 
 
