@@ -61,20 +61,30 @@ let cachedDb: Firestore | null = null;
 let connectionVerified = false;
 
 function getResolvedFirebaseConfig() {
-  const apiKey = firebaseConfigJson.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || '';
-  const projectId = firebaseConfigJson.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
-  const authDomain =
-    firebaseConfigJson.authDomain ||
-    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
-    (projectId ? `${projectId}.firebaseapp.com` : '');
-  const storageBucket =
-    firebaseConfigJson.storageBucket ||
-    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ||
-    (projectId ? `${projectId}.firebasestorage.app` : '');
-  const messagingSenderId =
-    firebaseConfigJson.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '';
-  const appId = firebaseConfigJson.appId || import.meta.env.VITE_FIREBASE_APP_ID || '';
-  const firestoreDatabaseId = firebaseConfigJson.firestoreDatabaseId || '';
+  const envProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim() || '';
+  const useEnvironmentConfig = Boolean(envProjectId);
+  const projectId = envProjectId || firebaseConfigJson.projectId || '';
+
+  // When a deployment supplies a project ID, use that project's environment
+  // values as a complete config. Never mix its ID with the bundled app's API key.
+  const apiKey = useEnvironmentConfig
+    ? import.meta.env.VITE_FIREBASE_API_KEY || ''
+    : firebaseConfigJson.apiKey || '';
+  const authDomain = useEnvironmentConfig
+    ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (projectId ? `${projectId}.firebaseapp.com` : '')
+    : firebaseConfigJson.authDomain || (projectId ? `${projectId}.firebaseapp.com` : '');
+  const storageBucket = useEnvironmentConfig
+    ? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (projectId ? `${projectId}.firebasestorage.app` : '')
+    : firebaseConfigJson.storageBucket || (projectId ? `${projectId}.firebasestorage.app` : '');
+  const messagingSenderId = useEnvironmentConfig
+    ? import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''
+    : firebaseConfigJson.messagingSenderId || '';
+  const appId = useEnvironmentConfig
+    ? import.meta.env.VITE_FIREBASE_APP_ID || ''
+    : firebaseConfigJson.appId || '';
+  const firestoreDatabaseId = useEnvironmentConfig
+    ? import.meta.env.VITE_FIRESTORE_DATABASE_ID || ''
+    : firebaseConfigJson.firestoreDatabaseId || '';
 
   return {
     apiKey,
